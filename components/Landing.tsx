@@ -1,0 +1,166 @@
+import Script from 'next/script';
+import PixelInit from '@/components/PixelInit';
+import RotatingBackground from '@/components/RotatingBackground';
+import Template2View from '@/components/Template2View';
+import WhatsAppButton from '@/components/WhatsAppButton';
+import type { LandingConfig } from '@/lib/landing/types';
+import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
+
+type Props = {
+  slug: string;
+  config: LandingConfig;
+};
+
+function pixelLoaderScript() {
+  return `
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    window.fbq=window.fbq||function(){};
+  `;
+}
+
+export default function Landing({ slug, config }: Props) {
+  const images = config.background?.images || [];
+  const hasLogo = Boolean(config.content.logoUrl);
+  const titleLines = config.content.title || [];
+  const subtitleLines = config.content.subtitle || [];
+  const badgeText = config.content.footerBadgeText || '';
+
+  const rawCtaPosition = config.layout?.ctaPosition ?? 'between_title_and_info';
+  const normalizedCtaPosition = (() => {
+    const value = rawCtaPosition === 'below_info' ? 'between_info_and_badge' : rawCtaPosition;
+    const allowed = ['top', 'between_title_and_info', 'between_info_and_badge', 'bottom'] as const;
+    return allowed.includes(value as (typeof allowed)[number]) ? value : 'between_title_and_info';
+  })();
+
+  const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
+  const isTemplate2 = config.layout?.template === 2;
+
+  if (isTemplate2) {
+    return (
+      <>
+        {config.tracking.pixelId ? (
+          <>
+            <Script id={`meta-pixel-${config.id}`} strategy="afterInteractive">
+              {pixelLoaderScript()}
+            </Script>
+            <PixelInit pixelId={config.tracking.pixelId} />
+            <noscript>
+              <img
+                height="1"
+                width="1"
+                style={{ display: 'none' }}
+                src={`https://www.facebook.com/tr?id=${config.tracking.pixelId}&ev=PageView&noscript=1`}
+                alt=""
+              />
+            </noscript>
+          </>
+        ) : null}
+        <Template2View slug={slug} config={config} />
+      </>
+    );
+  }
+
+  return (
+    <main className="landing-shell">
+      {config.tracking.pixelId ? (
+        <>
+          <Script id={`meta-pixel-${config.id}`} strategy="afterInteractive">
+            {pixelLoaderScript()}
+          </Script>
+          <PixelInit pixelId={config.tracking.pixelId} />
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: 'none' }}
+              src={`https://www.facebook.com/tr?id=${config.tracking.pixelId}&ev=PageView&noscript=1`}
+              alt=""
+            />
+          </noscript>
+        </>
+      ) : null}
+
+      <section className="container background-image">
+        <RotatingBackground
+          images={images}
+          rotateEveryHours={config.background.rotateEveryHours}
+          overlay={false}
+        />
+
+        <div className="content" style={{ fontFamily: resolvedFontFamily }}>
+          {hasLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={config.content.logoUrl}
+              className="logo"
+              alt={config.name}
+              decoding="async"
+              fetchPriority="high"
+            />
+          ) : null}
+
+          {normalizedCtaPosition === 'top' ? <WhatsAppButton slug={slug} config={config} /> : null}
+
+          <p
+            className="title"
+            style={{
+              color: config.colors.title,
+              fontSize: `${config.typography.title.sizePx}px`,
+              fontWeight: config.typography.title.weight
+            }}
+          >
+            {titleLines.map((line, idx) => (
+              <span key={`${slug}-title-${idx}`}>
+                {line}
+                {idx < titleLines.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+
+          {normalizedCtaPosition === 'between_title_and_info' ? (
+            <WhatsAppButton slug={slug} config={config} />
+          ) : null}
+
+          <p
+            className="subtitle"
+            style={{
+              color: config.colors.subtitle,
+              fontSize: `${config.typography.subtitle.sizePx}px`,
+              fontWeight: config.typography.subtitle.weight
+            }}
+          >
+            {subtitleLines.map((line, idx) => (
+              <span key={`${slug}-subtitle-${idx}`}>
+                {line}
+                {idx < subtitleLines.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+
+          {normalizedCtaPosition === 'between_info_and_badge' ? (
+            <WhatsAppButton slug={slug} config={config} />
+          ) : null}
+
+          {badgeText ? (
+            <p
+              className="description"
+              style={{
+                color: config.colors.badge,
+                fontSize: `${config.typography.badge.sizePx}px`,
+                fontWeight: config.typography.badge.weight
+              }}
+            >
+              -{badgeText}-
+            </p>
+          ) : null}
+
+          {normalizedCtaPosition === 'bottom' ? <WhatsAppButton slug={slug} config={config} /> : null}
+        </div>
+      </section>
+    </main>
+  );
+}
