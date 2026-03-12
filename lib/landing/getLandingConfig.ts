@@ -16,7 +16,9 @@ export async function getLandingConfig(name: string): Promise<LandingConfig | nu
     headers: {
       apikey: anonKey,
       Authorization: `Bearer ${anonKey}`
-    }
+    },
+    cache: 'force-cache',
+    next: { revalidate: 60 }
   });
 
   if (response.status === 404) {
