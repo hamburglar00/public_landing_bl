@@ -5,8 +5,8 @@ import { getLandingConfig } from '@/lib/landing/getLandingConfig';
 export const revalidate = 60;
 export const dynamic = 'force-static';
 
-export default async function LandingPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default async function LandingPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const config = await getLandingConfig(slug);
 
   if (!config) {
