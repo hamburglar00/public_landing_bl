@@ -170,6 +170,12 @@ Todo lo que el cliente manda (incluido `telefono_asignado`, `event_id`, `externa
 - `REVALIDATE_SECRET`: secreto para POST `/api/revalidate`.
 - Opcional: `SUPABASE_SERVICE_ROLE_KEY` si en algún momento se usa el cliente con service role.
 
+### Métricas de performance (Vercel Speed Insights)
+
+- Se instala `@vercel/speed-insights` y se importa `SpeedInsights` en `app/layout.tsx`.
+- En el layout raíz se renderiza `<SpeedInsights />` dentro del `<body>`, después de `{children}`.
+- Con esto, Vercel empieza a registrar métricas de Web Vitals (LCP, FID, CLS, etc.) para las visitas en producción. Puedes verlas en la pestaña **Speed Insights** del proyecto en Vercel.
+
 ---
 
 ## Pasos rápidos (desarrollo)
