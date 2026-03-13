@@ -176,6 +176,12 @@ Todo lo que el cliente manda (incluido `telefono_asignado`, `event_id`, `externa
 - En el layout raíz se renderiza `<SpeedInsights />` dentro del `<body>`, después de `{children}`.
 - Con esto, Vercel empieza a registrar métricas de Web Vitals (LCP, FID, CLS, etc.) para las visitas en producción. Puedes verlas en la pestaña **Speed Insights** del proyecto en Vercel.
 
+### Analíticas de tráfico (Vercel Analytics)
+
+- Se instala `@vercel/analytics` y se importa `Analytics` en `app/layout.tsx`.
+- En el layout raíz se renderiza `<Analytics />` dentro del `<body>`, junto con `<SpeedInsights />`.
+- Con esto, Vercel registra pageviews y métricas básicas de uso en producción. Puedes verlas en la pestaña **Analytics** del proyecto en Vercel.
+
 ---
 
 ## Pasos rápidos (desarrollo)
