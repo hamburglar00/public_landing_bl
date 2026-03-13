@@ -19,9 +19,9 @@ Landing pública dinámica por slug. Next.js obtiene la configuración desde una
 
 ### Cacheo (ISR)
 
-- En `app/[slug]/page.tsx` está definido **`export const revalidate = 60`**.
+- En `app/[slug]/page.tsx` está definido **`export const revalidate = 60`** y **`export const dynamic = 'force-static'`**, indicando que la ruta es estática con revalidación.
 - La ruta se genera en el servidor y Next puede **cachear el HTML** de esa página hasta 60 segundos.
-- Pasado ese tiempo, la siguiente petición a `/<name>` puede regenerar la página (vuelve a llamar a `builder-config` y a renderizar).
+- Pasado ese tiempo, la siguiente petición a `/<name>` puede regenerar la página (vuelve a llamar a la configuración a través del proxy `/api/config` y a renderizar).
 
 ### Invalidación bajo demanda
 
