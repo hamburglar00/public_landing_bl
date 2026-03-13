@@ -93,7 +93,7 @@ function normalizePhone(raw: string) {
 }
 
 function generatePromoCode(tag: string) {
-  const random = Math.random().toString(16).slice(2, 10);
+  const random = Math.random().toString(16).slice(2, 14);
   return `${tag}-${random}`;
 }
 
