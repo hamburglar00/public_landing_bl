@@ -4,7 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
-  title: 'Landing Runtime',
+  title: 'Landing PBAdmin',
   description: 'Landing dinámica por slug'
 };
 

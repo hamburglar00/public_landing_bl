@@ -1,4 +1,4 @@
-# Landing Runtime
+# Landing PBAdmin
 
 Landing pública dinámica por slug. Next.js obtiene la configuración desde una Edge Function de Supabase, renderiza la vista (plantilla 1 o 2), y al hacer clic en el CTA redirige a WhatsApp tras disparar Pixel Contact, tracking a Sheet y (opcional) aviso de teléfono usado.
 
