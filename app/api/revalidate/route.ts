@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 /** Orígenes permitidos para CORS (constructor en local y prod). Separados por coma. Ej: http://localhost:3001,https://tu-constructor.vercel.app */
 const ALLOWED_ORIGINS_KEY = 'ALLOWED_ORIGINS';
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
 
     const path = `/${name}`;
     revalidatePath(path);
+    revalidateTag(`landing-config:${name}`);
 
     return NextResponse.json({ revalidated: true, path }, { headers: cors });
   } catch (error: unknown) {

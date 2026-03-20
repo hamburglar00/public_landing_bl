@@ -27,7 +27,8 @@ export async function GET(req: Request) {
       apikey: anonKey,
       Authorization: `Bearer ${anonKey}`
     },
-    cache: 'no-store'
+    cache: 'force-cache',
+    next: { revalidate: 60, tags: [`landing-config:${name}`] }
   });
 
   const text = await upstream.text();
@@ -35,7 +36,8 @@ export async function GET(req: Request) {
   return new NextResponse(text, {
     status: upstream.status,
     headers: {
-      'content-type': 'application/json; charset=utf-8'
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'public, s-maxage=60, stale-while-revalidate=300'
     }
   });
 }
