@@ -11,7 +11,7 @@ export async function getLandingConfig(name: string): Promise<LandingConfig | nu
 
   const response = await fetch(url, {
     cache: 'force-cache',
-    next: { revalidate: 60 }
+    next: { revalidate: 60, tags: [`landing-config:${name}`] }
   });
 
   if (response.status === 404) {
