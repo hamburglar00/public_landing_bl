@@ -189,6 +189,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       // Usa el número pre-cargado; si aún no se pidió, lo solicita ahora
       const phoneData = await ensurePhonePromise();
+      const effectivePhoneMode =
+        phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
 
       const phone = normalizePhone(phoneData?.phone || '');
 
@@ -199,7 +201,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       // Aviso de teléfono usado al servicio phone-click (no bloquea redirect)
       // Solo cuando el número se asignó en modo equitativo (según respuesta de landing-phone)
-      if (phoneData?.phoneMode === 'fair') {
+      if (effectivePhoneMode === 'fair') {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

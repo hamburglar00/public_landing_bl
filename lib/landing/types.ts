@@ -73,7 +73,16 @@ export type LandingPhoneResponse = {
   landingName: string;
   phoneId?: number;
   phoneMode: string;
+  fairCriterion?: string;
   phoneKind: string;
+  phoneSelection?: {
+    mode?: string;
+    criterion?: string;
+  };
+  gerenciaSelection?: {
+    mode?: string;
+    criterion?: string;
+  };
   gerencia?: {
     id: number;
     externalId: number;
