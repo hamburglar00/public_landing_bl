@@ -112,6 +112,20 @@ function getOrCreateExternalId() {
   return created;
 }
 
+async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timeoutId = setTimeout(() => resolve(null), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export default function WhatsAppButton({ slug, config, templateVariant = 'default' }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
@@ -160,6 +174,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     if (isLoading || isDisabled) return;
 
     setIsLoading(true);
+    const tapStartedAt = Date.now();
 
     try {
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
@@ -208,8 +223,12 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         // Ignorar errores de pixel para no afectar la UX
       }
 
-      // Usa el número pre-cargado; si aún no se pidió, lo solicita ahora
-      const phoneData = await ensurePhonePromise();
+      // Usa el número pre-cargado; si viene lento, hace un reintento corto.
+      let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
+      if (!phoneData?.phone) {
+        phonePromiseRef.current = null;
+        phoneData = await waitWithTimeout(ensurePhonePromise(), 2500);
+      }
       const effectivePhoneMode =
         phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
 
@@ -271,6 +290,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         landing_id: config.id,
         landing_name: config.name,
         device_type: getDeviceType(),
+        cta_tap_to_redirect_ms: Date.now() - tapStartedAt,
         mode: config.background.mode,
         api_meta: null
       };
