@@ -56,7 +56,38 @@ export async function POST(req: Request) {
     revalidatePath(path);
     revalidateTag(`landing-config:${name}`);
 
-    return NextResponse.json({ revalidated: true, path }, { headers: cors });
+    const origin = new URL(req.url).origin;
+    const warmSlug = encodeURIComponent(name);
+
+    const warmPageUrl = `${origin}/${warmSlug}?warm=1`;
+    const warmConfigUrl = `${origin}/api/config?name=${warmSlug}`;
+
+    const warmFetch = async (url: string): Promise<boolean> => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    const [warmedPage, warmedConfig] = await Promise.all([
+      warmFetch(warmPageUrl),
+      warmFetch(warmConfigUrl),
+    ]);
+
+    return NextResponse.json(
+      { revalidated: true, path, warmedPage, warmedConfig },
+      { headers: cors }
+    );
   } catch (error: unknown) {
     const details =
       error instanceof Error ? error.message : String(error);
@@ -66,4 +97,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
