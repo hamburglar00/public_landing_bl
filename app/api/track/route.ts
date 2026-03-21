@@ -13,11 +13,31 @@ export async function POST(req: NextRequest) {
         : null;
 
     if (!postUrl || !/^https?:\/\//i.test(postUrl)) {
-      return NextResponse.json({ error: 'postUrl inválida' }, { status: 400 });
+      return NextResponse.json({ error: 'postUrl invÃ¡lida' }, { status: 400 });
     }
     if (!payloadFromClient) {
-      return NextResponse.json({ error: 'payload inválido' }, { status: 400 });
+      return NextResponse.json({ error: 'payload invÃ¡lido' }, { status: 400 });
     }
+
+    const allowedHosts = (process.env.TRACK_ALLOWED_HOSTS || '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean);
+
+    let postHost = '';
+    try {
+      postHost = new URL(postUrl).host.trim().toLowerCase();
+    } catch {
+      return NextResponse.json({ error: 'postUrl invÃ¡lida' }, { status: 400 });
+    }
+
+    if (allowedHosts.length > 0 && !allowedHosts.includes(postHost)) {
+      return NextResponse.json(
+        { error: `Host no permitido para tracking: ${postHost}` },
+        { status: 403 }
+      );
+    }
+
 
     const forwardedFor = req.headers.get('x-forwarded-for') || '';
     const userAgent = req.headers.get('user-agent') || '';

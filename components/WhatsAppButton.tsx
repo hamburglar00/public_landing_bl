@@ -210,7 +210,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
           if (baseUrl && anonKey && phoneId != null) {
             const notifyUrl = `${baseUrl.replace(/\/+$/, '')}/functions/v1/phone-click`;
             const notifyBody = JSON.stringify({
-              landingName: phoneData.landingName || config.name,
+              landingName: phoneData?.landingName || config.name,
               phoneId,
               phone
             });
