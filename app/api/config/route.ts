@@ -37,8 +37,7 @@ export async function GET(req: Request) {
     status: upstream.status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'public, s-maxage=60, stale-while-revalidate=300'
+      'cache-control': 'no-store'
     }
   });
 }
-
