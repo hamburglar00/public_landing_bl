@@ -59,16 +59,21 @@ export async function POST(req: Request) {
     const origin = new URL(req.url).origin;
     const warmSlug = encodeURIComponent(name);
 
-    const warmPageUrl = `${origin}/${warmSlug}?warm=1`;
-    const warmConfigUrl = `${origin}/api/config?name=${warmSlug}`;
+    const ts = Date.now();
+    const warmConfigUrl = `${origin}/api/config?name=${warmSlug}&_ts=${ts}`;
+    const warmPageUrl = `${origin}/${warmSlug}?warm=1&_ts=${ts}`;
 
     const warmFetch = async (url: string): Promise<boolean> => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2500);
+      const timeout = setTimeout(() => controller.abort(), 5000);
       try {
         const res = await fetch(url, {
           method: 'GET',
           cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, max-age=0',
+            Pragma: 'no-cache',
+          },
           signal: controller.signal,
         });
         return res.ok;
@@ -79,13 +84,18 @@ export async function POST(req: Request) {
       }
     };
 
-    const [warmedPage, warmedConfig] = await Promise.all([
-      warmFetch(warmPageUrl),
-      warmFetch(warmConfigUrl),
-    ]);
+    const warmedConfig = await warmFetch(warmConfigUrl);
+
+    let warmedPage = await warmFetch(warmPageUrl);
+    let warmedPageRetry = false;
+    if (!warmedPage) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      warmedPageRetry = true;
+      warmedPage = await warmFetch(warmPageUrl);
+    }
 
     return NextResponse.json(
-      { revalidated: true, path, warmedPage, warmedConfig },
+      { revalidated: true, path, warmedConfig, warmedPage, warmedPageRetry },
       { headers: cors }
     );
   } catch (error: unknown) {
