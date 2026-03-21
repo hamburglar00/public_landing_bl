@@ -129,8 +129,29 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
   // Prewarm del teléfono apenas carga el botón / landing
   useEffect(() => {
+    let cancelled = false;
+
+    const prewarmWithRetry = async () => {
+      const delays = [0, 400, 1200];
+      for (let i = 0; i < delays.length; i += 1) {
+        if (cancelled) return;
+        if (delays[i] > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delays[i]));
+          if (cancelled) return;
+        }
+        const data = await ensurePhonePromise();
+        if (data?.phone) return;
+        // Forzamos un nuevo intento real en lugar de reutilizar la promesa fallida.
+        phonePromiseRef.current = null;
+      }
+    };
+
     phonePromiseRef.current = null;
-    void ensurePhonePromise();
+    void prewarmWithRetry();
+
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
