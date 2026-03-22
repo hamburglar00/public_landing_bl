@@ -10,6 +10,14 @@ type Props = {
   templateVariant?: 'default' | 'template1' | 'template2';
 };
 
+type FbqFn = (command: string, ...args: unknown[]) => void;
+
+declare global {
+  interface Window {
+    fbq?: FbqFn;
+  }
+}
+
 function getQueryParam(name: string) {
   if (typeof window === 'undefined') return '';
   const params = new URLSearchParams(window.location.search);
