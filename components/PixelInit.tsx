@@ -1,164 +1,71 @@
 ﻿'use client';
 
-import { useEffect } from 'react';
+import Script from 'next/script';
 
 type Props = {
   pixelId: string;
 };
 
-type FbqFn = ((command: string, ...args: unknown[]) => void) & {
-  callMethod?: (...args: unknown[]) => void;
-  queue?: IArguments[];
-  loaded?: boolean;
-  version?: string;
-  push?: (...args: unknown[]) => void;
-};
-
-declare global {
-  interface Window {
-    fbq?: FbqFn;
-    _fbq?: FbqFn;
-    __metaPixelInitializedIds?: Set<string>;
-    __metaPixelPageViewTrackedIds?: Set<string>;
-  }
-}
-
-function getQueryParam(name: string): string {
-  if (typeof window === 'undefined') return '';
-  const params = new URLSearchParams(window.location.search);
-  return params.get(name)?.trim() || '';
-}
-
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D+/g, '');
-  if (!digits) return '';
-  if (digits.length === 10) return `54${digits}`;
-  return digits;
-}
-
-function getOrCreateExternalId(): string {
-  if (typeof window === 'undefined') return '';
-
-  try {
-    const key = 'external_id';
-    const existing = window.localStorage.getItem(key);
-    if (existing) return existing;
-
-    const created =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-    window.localStorage.setItem(key, created);
-    return created;
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-}
-
-function ensureFbqBootstrap(): void {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-
-  if (typeof window.fbq === 'function') return;
-
-  const f = window;
-  const n: FbqFn = function (this: unknown) {
-    if (typeof n.callMethod === 'function') {
-      n.callMethod(...Array.from(arguments));
-    } else {
-      n.queue?.push(arguments);
-    }
-  };
-
-  n.push = n as unknown as (...args: unknown[]) => void;
-  n.loaded = true;
-  n.version = '2.0';
-  n.queue = [];
-
-  f.fbq = n;
-  if (!f._fbq) {
-    f._fbq = n;
-  }
-}
-
-function ensurePixelScript(): HTMLScriptElement | null {
-  if (typeof document === 'undefined') return null;
-
-  const src = 'https://connect.facebook.net/en_US/fbevents.js';
-  const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
-  if (existing) return existing;
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = src;
-
-  const firstScript = document.getElementsByTagName('script')[0];
-  if (firstScript?.parentNode) {
-    firstScript.parentNode.insertBefore(script, firstScript);
-  } else {
-    document.head.appendChild(script);
-  }
-
-  return script;
-}
-
 export default function PixelInit({ pixelId }: Props) {
-  useEffect(() => {
-    if (!pixelId || typeof window === 'undefined') return;
+  if (!pixelId) return null;
 
-    try {
-      window.__metaPixelInitializedIds ??= new Set<string>();
-      window.__metaPixelPageViewTrackedIds ??= new Set<string>();
+  return (
+    <>
+      <Script id={`meta-pixel-base-${pixelId}`} strategy="afterInteractive">
+        {`
+          !function(f,b,e,v,n,t,s)
+          {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;
+          n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];
+          t=b.createElement(e);t.async=!0;t.src=v;
+          s=b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t,s)}(window, document,'script',
+          'https://connect.facebook.net/en_US/fbevents.js');
+        `}
+      </Script>
 
-      ensureFbqBootstrap();
-      const pixelScript = ensurePixelScript();
+      <Script id={`meta-pixel-init-${pixelId}`} strategy="afterInteractive">
+        {`
+          (function () {
+            try {
+              window.__metaPixelInitDone = window.__metaPixelInitDone || {};
+              if (window.__metaPixelInitDone['${pixelId}']) return;
 
-      const runInitAndPageView = () => {
-        const fbq = window.fbq;
-        if (typeof fbq !== 'function') return;
+              var params = new URLSearchParams(window.location.search);
+              var email = (params.get('email') || '').trim().toLowerCase();
+              var phoneRaw = params.get('phone') || '';
+              var phone = phoneRaw.replace(/\\D+/g, '');
+              if (phone.length === 10) phone = '54' + phone;
 
-        if (!window.__metaPixelInitializedIds?.has(pixelId)) {
-          const externalId = getOrCreateExternalId();
-          const email = getQueryParam('email').toLowerCase();
-          const ph = normalizePhone(getQueryParam('phone'));
+              var externalId = '';
+              try {
+                externalId = localStorage.getItem('external_id') || '';
+                if (!externalId) {
+                  externalId =
+                    (window.crypto && typeof window.crypto.randomUUID === 'function')
+                      ? window.crypto.randomUUID()
+                      : (Date.now() + '-' + Math.random().toString(36).slice(2));
+                  localStorage.setItem('external_id', externalId);
+                }
+              } catch (e) {
+                externalId = Date.now() + '-' + Math.random().toString(36).slice(2);
+              }
 
-          const advancedMatching: Record<string, string> = {
-            external_id: externalId
-          };
+              var advancedMatching = { external_id: externalId };
+              if (email) advancedMatching.em = email;
+              if (phone) advancedMatching.ph = phone;
 
-          if (email) advancedMatching.em = email;
-          if (ph) advancedMatching.ph = ph;
+              fbq('init', '${pixelId}', advancedMatching);
+              fbq('track', 'PageView');
 
-          fbq('init', pixelId, advancedMatching);
-          window.__metaPixelInitializedIds?.add(pixelId);
-        }
-
-        if (!window.__metaPixelPageViewTrackedIds?.has(pixelId)) {
-          fbq('track', 'PageView');
-          window.__metaPixelPageViewTrackedIds?.add(pixelId);
-        }
-      };
-
-      runInitAndPageView();
-
-      const onLoad = () => {
-        runInitAndPageView();
-      };
-
-      if (pixelScript) {
-        pixelScript.addEventListener('load', onLoad, { once: true });
-      }
-
-      return () => {
-        if (pixelScript) {
-          pixelScript.removeEventListener('load', onLoad);
-        }
-      };
-    } catch {
-      // Nunca romper la landing por tracking
-    }
-  }, [pixelId]);
-
-  return null;
+              window.__metaPixelInitDone['${pixelId}'] = true;
+            } catch (e) {
+              console.error('Meta Pixel init error', e);
+            }
+          })();
+        `}
+      </Script>
+    </>
+  );
 }
-
