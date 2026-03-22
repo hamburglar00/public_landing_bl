@@ -59,7 +59,7 @@ function getOrCreateExternalId(): string {
 function ensureFbqBootstrap(): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  if (window.fbq) return;
+  if (typeof window.fbq === 'function') return;
 
   const f = window;
   const n: FbqFn = function (this: unknown) {
@@ -112,7 +112,7 @@ export default function PixelInit({ pixelId }: Props) {
       ensurePixelScript();
 
       const fbq = window.fbq;
-      if (!fbq) return;
+      if (typeof fbq !== 'function') return;
 
       if (!window.__metaPixelInitializedIds.has(pixelId)) {
         const externalId = getOrCreateExternalId();
