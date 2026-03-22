@@ -8,8 +8,7 @@ export default function PixelInit({ pixelId }: Props) {
   if (!pixelId) return null;
 
   return (
-    <>
-      <Script id={`meta-pixel-${pixelId}`} strategy="beforeInteractive">
+    <Script id={`meta-pixel-${pixelId}`} strategy="afterInteractive">
         {`
           (function () {
             !function(f,b,e,v,n,t,s){
@@ -120,17 +119,6 @@ export default function PixelInit({ pixelId }: Props) {
             }
           })();
         `}
-      </Script>
-
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: 'none' }}
-          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
-    </>
+    </Script>
   );
 }
