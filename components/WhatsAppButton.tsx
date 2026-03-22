@@ -57,9 +57,6 @@ function getFbp() {
   try {
     const fromCookie = getCookie('_fbp');
     if (fromCookie) return fromCookie;
-
-    const stored = window.localStorage.getItem('_fbp');
-    if (stored) return stored;
     return '';
   } catch {
     return '';
