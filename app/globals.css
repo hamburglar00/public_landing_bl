@@ -322,7 +322,7 @@ select {
 .lp .cta {
   width: 80%;
   min-height: 45px;
-  margin-top: 14px;
+  margin-top: 18px;
   border-radius: 16px;
   background: #08c95f;
   display: flex;
@@ -354,8 +354,8 @@ select {
 .lp .cta__fill {
   flex: 0 0 auto;
   color: #fff;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: inherit;
+  font-weight: inherit;
   line-height: 1;
 }
 
@@ -367,7 +367,7 @@ select {
 }
 
 .lp .features {
-  margin-top: 24px;
+  margin-top: 18px;
   text-align: center;
   color: #f4f4f4;
   font-size: 13.5px;
@@ -425,7 +425,8 @@ select {
   }
 
   .lp .cta__fill {
-    font-size: 14px;
+    font-size: inherit;
+    font-weight: inherit;
   }
 
   .lp .cta__icon {
