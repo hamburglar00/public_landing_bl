@@ -5,10 +5,11 @@ type Props = {
 };
 
 export default function PixelInit({ pixelId }: Props) {
-  if (!pixelId) return null;
+  const normalizedPixelId = String(pixelId || '').trim().replace(/\D+/g, '');
+  if (!normalizedPixelId) return null;
 
   return (
-    <Script id={`meta-pixel-${pixelId}`} strategy="afterInteractive">
+    <Script id={`meta-pixel-${normalizedPixelId}`} strategy="afterInteractive">
         {`
           (function () {
             !function(f,b,e,v,n,t,s){
@@ -85,7 +86,7 @@ export default function PixelInit({ pixelId }: Props) {
                 }
               } catch (e) {}
 
-              fbq('init', '${pixelId}', {
+              fbq('init', '${normalizedPixelId}', {
                 em: userEmail,
                 ph: userPhone,
                 fn: userFn,
@@ -106,7 +107,7 @@ export default function PixelInit({ pixelId }: Props) {
               fbq('track', 'PageView');
 
               window.__META = {
-                PIXEL_ID: '${pixelId}',
+                PIXEL_ID: '${normalizedPixelId}',
                 userEmail: userEmail,
                 userPhone: userPhone,
                 userFn: userFn,
