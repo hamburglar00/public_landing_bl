@@ -1,4 +1,3 @@
-import PixelInit from '@/components/PixelInit';
 import RotatingBackground from '@/components/RotatingBackground';
 import Template2View from '@/components/Template2View';
 import WhatsAppButton from '@/components/WhatsAppButton';
@@ -9,6 +8,40 @@ type Props = {
   slug: string;
   config: LandingConfig;
 };
+
+function buildMetaPixelInlineScript(pixelId: string) {
+  const safePixelId = JSON.stringify(pixelId);
+  return `
+!function(f,b,e,v,n,t,s){
+if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;
+s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)
+}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+(function() {
+  var qs = new URLSearchParams(window.location.search);
+  var email = (qs.get('email') || '').trim().toLowerCase();
+  var phone = (qs.get('phone') || '').replace(/\\D+/g, '');
+  if (phone && phone.length === 10) phone = '54' + phone;
+  var externalId = '';
+  try {
+    externalId = localStorage.getItem('external_id') || '';
+    if (!externalId) {
+      externalId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random());
+      localStorage.setItem('external_id', externalId);
+    }
+  } catch(_) {
+    externalId = String(Date.now()) + '-' + Math.random();
+  }
+  var user = { external_id: externalId };
+  if (email) user.em = email;
+  if (phone) user.ph = phone;
+  fbq('init', ${safePixelId}, user);
+  fbq('track', 'PageView');
+})();
+`;
+}
 
 export default function Landing({ slug, config }: Props) {
   const images = config.background?.images || [];
@@ -26,24 +59,26 @@ export default function Landing({ slug, config }: Props) {
 
   const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isTemplate2 = config.layout?.template === 2;
+  const pixelId = config.tracking.pixelId;
+  const pixelBlock = pixelId ? (
+    <>
+      <script dangerouslySetInnerHTML={{ __html: buildMetaPixelInlineScript(pixelId) }} />
+      <noscript>
+        <img
+          height="1"
+          width="1"
+          style={{ display: 'none' }}
+          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
+          alt=""
+        />
+      </noscript>
+    </>
+  ) : null;
 
   if (isTemplate2) {
     return (
       <>
-        {config.tracking.pixelId ? (
-          <>
-            <PixelInit pixelId={config.tracking.pixelId} />
-            <noscript>
-              <img
-                height="1"
-                width="1"
-                style={{ display: 'none' }}
-                src={`https://www.facebook.com/tr?id=${config.tracking.pixelId}&ev=PageView&noscript=1`}
-                alt=""
-              />
-            </noscript>
-          </>
-        ) : null}
+        {pixelBlock}
         <Template2View slug={slug} config={config} />
       </>
     );
@@ -51,20 +86,7 @@ export default function Landing({ slug, config }: Props) {
 
   return (
     <main className="landing-shell">
-      {config.tracking.pixelId ? (
-        <>
-          <PixelInit pixelId={config.tracking.pixelId} />
-          <noscript>
-            <img
-              height="1"
-              width="1"
-              style={{ display: 'none' }}
-              src={`https://www.facebook.com/tr?id=${config.tracking.pixelId}&ev=PageView&noscript=1`}
-              alt=""
-            />
-          </noscript>
-        </>
-      ) : null}
+      {pixelBlock}
 
       <section className="container background-image">
         <RotatingBackground
