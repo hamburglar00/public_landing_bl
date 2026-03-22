@@ -170,6 +170,15 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
   const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
 
+  function extractPhoneId(
+    phoneData: Awaited<ReturnType<typeof getLandingPhone>> | null
+  ): number | null {
+    if (!phoneData) return null;
+    if (typeof phoneData.phoneId === 'number') return phoneData.phoneId;
+    const maybeId = (phoneData as { id?: unknown }).id;
+    return typeof maybeId === 'number' ? maybeId : null;
+  }
+
   async function handleClick() {
     if (isLoading || isDisabled) return;
 
@@ -187,22 +196,16 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const ph = phoneRaw ? normalizePhone(phoneRaw) : '';
       const fbp = getFbp();
       const fbc = getFbc();
-      const fbclid = getQueryParam('fbclid');
+      const utmCampaign = getQueryParam('utm_campaign');
 
       // Pixel Contact con eventID y parámetros (igual que landing vieja)
       try {
-        if (typeof window !== 'undefined' && (window as any).fbq) {
+        if (typeof window !== 'undefined' && window.fbq) {
           const contactData: Record<string, unknown> = {
-            content_name: 'Botón WhatsApp',
-            content_category: 'LeadGen',
-            event_source: 'LandingPage',
             source: 'main_button',
-            event_id: eventId,
             external_id: externalId,
             fbp,
-            fbc,
-            fbclid,
-            fbclic: fbclid
+            fbc
           };
 
           if (email) {
@@ -212,7 +215,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
             contactData.ph = ph;
           }
 
-          (window as any).fbq(
+          window.fbq(
             'track',
             'Contact',
             contactData,
@@ -245,7 +248,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         try {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-          const phoneId = (phoneData as any)?.phoneId ?? (phoneData as any)?.id;
+          const phoneId = extractPhoneId(phoneData);
 
           if (baseUrl && anonKey && phoneId != null) {
             const notifyUrl = `${baseUrl.replace(/\/+$/, '')}/functions/v1/phone-click`;
@@ -276,13 +279,13 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const payload = {
         event_name: 'Contact',
         event_id: eventId,
-        external_id: getOrCreateExternalId(),
+        external_id: externalId,
         event_source_url: window.location.href,
-        email: getQueryParam('email'),
-        phone: getQueryParam('phone'),
-        utm_campaign: getQueryParam('utm_campaign'),
-        fbp: getFbp(),
-        fbc: getFbc(),
+        email: emailRaw,
+        phone: phoneRaw,
+        utm_campaign: utmCampaign,
+        fbp,
+        fbc,
         telefono_asignado: phone,
         promo_code: promoCode,
         source: 'main_button',

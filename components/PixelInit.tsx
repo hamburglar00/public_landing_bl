@@ -81,12 +81,12 @@ function ensureFbqBootstrap(): void {
   }
 }
 
-function ensurePixelScript(): void {
-  if (typeof document === 'undefined') return;
+function ensurePixelScript(): HTMLScriptElement | null {
+  if (typeof document === 'undefined') return null;
 
   const src = 'https://connect.facebook.net/en_US/fbevents.js';
   const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
-  if (existing) return;
+  if (existing) return existing;
 
   const script = document.createElement('script');
   script.async = true;
@@ -98,6 +98,8 @@ function ensurePixelScript(): void {
   } else {
     document.head.appendChild(script);
   }
+
+  return script;
 }
 
 export default function PixelInit({ pixelId }: Props) {
@@ -109,31 +111,49 @@ export default function PixelInit({ pixelId }: Props) {
       window.__metaPixelPageViewTrackedIds ??= new Set<string>();
 
       ensureFbqBootstrap();
-      ensurePixelScript();
+      const pixelScript = ensurePixelScript();
 
-      const fbq = window.fbq;
-      if (typeof fbq !== 'function') return;
+      const runInitAndPageView = () => {
+        const fbq = window.fbq;
+        if (typeof fbq !== 'function') return;
 
-      if (!window.__metaPixelInitializedIds.has(pixelId)) {
-        const externalId = getOrCreateExternalId();
-        const email = getQueryParam('email').toLowerCase();
-        const ph = normalizePhone(getQueryParam('phone'));
+        if (!window.__metaPixelInitializedIds?.has(pixelId)) {
+          const externalId = getOrCreateExternalId();
+          const email = getQueryParam('email').toLowerCase();
+          const ph = normalizePhone(getQueryParam('phone'));
 
-        const advancedMatching: Record<string, string> = {
-          external_id: externalId
-        };
+          const advancedMatching: Record<string, string> = {
+            external_id: externalId
+          };
 
-        if (email) advancedMatching.em = email;
-        if (ph) advancedMatching.ph = ph;
+          if (email) advancedMatching.em = email;
+          if (ph) advancedMatching.ph = ph;
 
-        fbq('init', pixelId, advancedMatching);
-        window.__metaPixelInitializedIds.add(pixelId);
+          fbq('init', pixelId, advancedMatching);
+          window.__metaPixelInitializedIds?.add(pixelId);
+        }
+
+        if (!window.__metaPixelPageViewTrackedIds?.has(pixelId)) {
+          fbq('track', 'PageView');
+          window.__metaPixelPageViewTrackedIds?.add(pixelId);
+        }
+      };
+
+      runInitAndPageView();
+
+      const onLoad = () => {
+        runInitAndPageView();
+      };
+
+      if (pixelScript) {
+        pixelScript.addEventListener('load', onLoad, { once: true });
       }
 
-      if (!window.__metaPixelPageViewTrackedIds.has(pixelId)) {
-        fbq('track', 'PageView');
-        window.__metaPixelPageViewTrackedIds.add(pixelId);
-      }
+      return () => {
+        if (pixelScript) {
+          pixelScript.removeEventListener('load', onLoad);
+        }
+      };
     } catch {
       // Nunca romper la landing por tracking
     }
