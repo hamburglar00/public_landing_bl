@@ -94,16 +94,6 @@ export default function PixelInit({ pixelId }: Props) {
                 external_id: externalId
               });
 
-              try {
-                fbq('set', 'userData', {
-                  em: userEmail,
-                  ph: userPhone,
-                  fn: userFn,
-                  ln: userLn,
-                  external_id: externalId
-                });
-              } catch (e) {}
-
               fbq('track', 'PageView');
 
               window.__META = {
