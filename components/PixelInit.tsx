@@ -4,13 +4,27 @@ type Props = {
   pixelId: string;
 };
 
+declare global {
+  interface Window {
+    __META?: {
+      PIXEL_ID?: string;
+      userEmail?: string;
+      userPhone?: string;
+      userFn?: string;
+      userLn?: string;
+      externalId?: string;
+      safeUUID?: () => string;
+    };
+  }
+}
+
 export default function PixelInit({ pixelId }: Props) {
   const normalizedPixelId = String(pixelId || '').trim().replace(/\D+/g, '');
   if (!normalizedPixelId) return null;
 
   return (
     <Script id={`meta-pixel-${normalizedPixelId}`} strategy="afterInteractive">
-        {`
+      {`
           (function () {
             !function(f,b,e,v,n,t,s){
               if(f.fbq) return;
@@ -33,6 +47,33 @@ export default function PixelInit({ pixelId }: Props) {
 
             try {
               var params = new URLSearchParams(window.location.search);
+
+              function readMeta(key){
+                try {
+                  return window.__META && window.__META[key] ? window.__META[key] : '';
+                } catch (e) {
+                  return '';
+                }
+              }
+
+              function readLocalStorage(key){
+                try {
+                  return localStorage.getItem(key) || '';
+                } catch (e) {
+                  return '';
+                }
+              }
+
+              function firstNonEmpty(values){
+                for (var i = 0; i < values.length; i += 1) {
+                  var value = values[i];
+                  if (value != null) {
+                    var text = String(value).trim();
+                    if (text) return text;
+                  }
+                }
+                return '';
+              }
 
               function normEmail(v){
                 v = (v || '').trim().toLowerCase();
@@ -71,19 +112,41 @@ export default function PixelInit({ pixelId }: Props) {
                 }
               }
 
-              var userEmail = normEmail(params.get('em') || params.get('email') || '');
-              var userPhone = normPhone(params.get('ph') || params.get('phone') || '');
-              var userFn = (params.get('fn') || '').trim() || undefined;
-              var userLn = (params.get('ln') || '').trim() || undefined;
-              var externalId = getOrCreateExternalId();
+              var userEmail = normEmail(firstNonEmpty([
+                params.get('email'),
+                params.get('em'),
+                readLocalStorage('em'),
+                readMeta('userEmail')
+              ]));
+
+              var userPhone = normPhone(firstNonEmpty([
+                params.get('phone'),
+                params.get('ph'),
+                readLocalStorage('ph'),
+                readMeta('userPhone')
+              ]));
+
+              var userFn = firstNonEmpty([
+                params.get('fn'),
+                readMeta('userFn')
+              ]) || undefined;
+
+              var userLn = firstNonEmpty([
+                params.get('ln'),
+                readMeta('userLn')
+              ]) || undefined;
+
+              var externalId =
+                firstNonEmpty([readMeta('externalId'), readLocalStorage('external_id')]) ||
+                getOrCreateExternalId();
 
               try {
-                if (params.get('em') || params.get('email')) {
-                  localStorage.setItem('em', userEmail || '');
-                }
-                if (params.get('ph') || params.get('phone')) {
-                  localStorage.setItem('ph', userPhone || '');
-                }
+                localStorage.setItem('external_id', externalId);
+              } catch (e) {}
+
+              try {
+                if (userEmail) localStorage.setItem('em', userEmail);
+                if (userPhone) localStorage.setItem('ph', userPhone);
               } catch (e) {}
 
               fbq('init', '${normalizedPixelId}', {

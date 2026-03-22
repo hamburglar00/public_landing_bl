@@ -15,6 +15,15 @@ type FbqFn = (command: string, ...args: unknown[]) => void;
 declare global {
   interface Window {
     fbq?: FbqFn;
+    __META?: {
+      PIXEL_ID?: string;
+      userEmail?: string;
+      userPhone?: string;
+      userFn?: string;
+      userLn?: string;
+      externalId?: string;
+      safeUUID?: () => string;
+    };
   }
 }
 
@@ -51,17 +60,7 @@ function getFbp() {
 
     const stored = window.localStorage.getItem('_fbp');
     if (stored) return stored;
-
-    const ts = Date.now();
-    const rand = Math.floor(Math.random() * 10_000_000_000);
-    const generated = `fb.1.${ts}.${rand}`;
-
-    window.localStorage.setItem('_fbp', generated);
-    if (typeof document !== 'undefined') {
-      document.cookie = `_fbp=${encodeURIComponent(generated)}; path=/; max-age=63072000`;
-    }
-
-    return generated;
+    return '';
   } catch {
     return '';
   }
@@ -118,6 +117,73 @@ function getOrCreateExternalId() {
   const created = crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
   window.localStorage.setItem('external_id', created);
   return created;
+}
+
+function firstNonEmpty(...values: Array<string | undefined>) {
+  for (const value of values) {
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function normalizeEmail(raw: string) {
+  return raw.trim().toLowerCase();
+}
+
+function readMeta() {
+  if (typeof window === 'undefined') return {};
+  return window.__META || {};
+}
+
+function getLocalStorageValue(key: string) {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function resolveIdentity() {
+  const meta = readMeta();
+
+  const emailResolved = firstNonEmpty(
+    getQueryParam('email'),
+    getQueryParam('em'),
+    getLocalStorageValue('em'),
+    meta.userEmail || ''
+  );
+
+  const phoneResolved = firstNonEmpty(
+    getQueryParam('phone'),
+    getQueryParam('ph'),
+    getLocalStorageValue('ph'),
+    meta.userPhone || ''
+  );
+
+  const fnResolved = firstNonEmpty(getQueryParam('fn'), meta.userFn || '');
+  const lnResolved = firstNonEmpty(getQueryParam('ln'), meta.userLn || '');
+
+  const externalIdResolved = firstNonEmpty(
+    meta.externalId || '',
+    getLocalStorageValue('external_id')
+  );
+
+  const externalId = externalIdResolved || getOrCreateExternalId();
+  const email = emailResolved ? normalizeEmail(emailResolved) : '';
+  const ph = phoneResolved ? normalizePhone(phoneResolved) : '';
+
+  return {
+    emailRaw: emailResolved,
+    phoneRaw: phoneResolved,
+    email,
+    ph,
+    fn: fnResolved,
+    ln: lnResolved,
+    externalId
+  };
 }
 
 async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
@@ -197,11 +263,12 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
       const message = buildMessage(promoCode);
       const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
-      const externalId = getOrCreateExternalId();
-      const emailRaw = getQueryParam('email');
-      const email = emailRaw ? emailRaw.trim().toLowerCase() : '';
-      const phoneRaw = getQueryParam('phone');
-      const ph = phoneRaw ? normalizePhone(phoneRaw) : '';
+      const identity = resolveIdentity();
+      const externalId = identity.externalId;
+      const emailRaw = identity.emailRaw;
+      const email = identity.email;
+      const phoneRaw = identity.phoneRaw;
+      const ph = identity.ph;
       const fbp = getFbp();
       const fbc = getFbc();
       const utmCampaign = getQueryParam('utm_campaign');
@@ -211,9 +278,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         if (typeof window !== 'undefined' && window.fbq) {
           const contactData: Record<string, unknown> = {
             source: 'main_button',
-            external_id: externalId,
-            fbp,
-            fbc
+            external_id: externalId
           };
 
           if (email) {
@@ -221,6 +286,18 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
           }
           if (ph) {
             contactData.ph = ph;
+          }
+          if (identity.fn) {
+            contactData.fn = identity.fn;
+          }
+          if (identity.ln) {
+            contactData.ln = identity.ln;
+          }
+          if (fbp) {
+            contactData.fbp = fbp;
+          }
+          if (fbc) {
+            contactData.fbc = fbc;
           }
 
           window.fbq(
@@ -329,6 +406,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         // El tracking nunca debe bloquear el redirect
       }
 
+      await new Promise((resolve) => setTimeout(resolve, 180));
       window.location.assign(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
     } finally {
       setIsLoading(false);
