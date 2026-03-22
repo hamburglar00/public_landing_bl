@@ -329,7 +329,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 0 14px;
+  padding: 8px 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 10px 24px rgba(0, 0, 0, 0.26);
@@ -337,6 +337,7 @@ select {
   border: none;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
+  overflow: hidden;
 }
 
 .lp .cta:active {
@@ -352,11 +353,16 @@ select {
 }
 
 .lp .cta__fill {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   color: #fff;
   font-size: inherit;
   font-weight: inherit;
-  line-height: 1;
+  line-height: 1.1;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .lp .cta__icon {
@@ -420,7 +426,7 @@ select {
     width: 80%;
     min-height: 39px;
     border-radius: 14px;
-    padding: 0 12px;
+    padding: 7px 12px;
     gap: 8px;
   }
 
