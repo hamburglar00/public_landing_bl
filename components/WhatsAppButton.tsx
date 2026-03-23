@@ -269,6 +269,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const fbp = getFbp();
       const fbc = getFbc();
       const utmCampaign = getQueryParam('utm_campaign');
+      const testEventCode = getQueryParam('test_event_code');
 
       // Pixel Contact con eventID y parámetros (igual que landing vieja)
       try {
@@ -366,6 +367,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         email: emailRaw,
         phone: phoneRaw,
         utm_campaign: utmCampaign,
+        test_event_code: testEventCode || undefined,
         fbp,
         fbc,
         telefono_asignado: phone,
