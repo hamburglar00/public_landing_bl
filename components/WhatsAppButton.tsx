@@ -143,6 +143,51 @@ function getLocalStorageValue(key: string) {
   }
 }
 
+const CONTACT_DEDUP_TTL_MS = 5 * 60 * 1000;
+
+function getContactDedupKey(slug: string, externalId: string) {
+  return `contact_sent:${slug}:${externalId}`;
+}
+
+function wasContactRecentlySent(slug: string, externalId: string) {
+  if (typeof window === 'undefined') return false;
+  if (!slug || !externalId) return false;
+
+  try {
+    const key = getContactDedupKey(slug, externalId);
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return false;
+
+    const sentAt = Number(raw);
+    if (!Number.isFinite(sentAt)) {
+      window.localStorage.removeItem(key);
+      return false;
+    }
+
+    const isFresh = Date.now() - sentAt < CONTACT_DEDUP_TTL_MS;
+    if (!isFresh) {
+      window.localStorage.removeItem(key);
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function markContactSent(slug: string, externalId: string) {
+  if (typeof window === 'undefined') return;
+  if (!slug || !externalId) return;
+
+  try {
+    const key = getContactDedupKey(slug, externalId);
+    window.localStorage.setItem(key, String(Date.now()));
+  } catch {
+    // Ignorar errores de storage
+  }
+}
+
 function resolveIdentity() {
   const meta = readMeta();
 
@@ -277,10 +322,11 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const fbc = getFbc();
       const utmCampaign = getQueryParam('utm_campaign');
       const testEventCode = getQueryParam('test_event_code');
+      const shouldSkipContact = wasContactRecentlySent(slug, externalId);
 
       // Pixel Contact con eventID y parámetros (igual que landing vieja)
       try {
-        if (typeof window !== 'undefined' && window.fbq) {
+        if (!shouldSkipContact && typeof window !== 'undefined' && window.fbq) {
           const contactData: Record<string, unknown> = {
             source: 'main_button',
             external_id: externalId
@@ -398,26 +444,32 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       };
 
       try {
-        const body = JSON.stringify({
-          postUrl: config.tracking.postUrl,
-          payload
-        });
-
-        if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-          const blob = new Blob([body], { type: 'application/json' });
-          navigator.sendBeacon('/api/track', blob);
-        } else {
-          void fetch('/api/track', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body,
-            keepalive: true
-          }).catch(() => {
-            // Ignorar errores de tracking
+        if (!shouldSkipContact) {
+          const body = JSON.stringify({
+            postUrl: config.tracking.postUrl,
+            payload
           });
+
+          if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+            const blob = new Blob([body], { type: 'application/json' });
+            navigator.sendBeacon('/api/track', blob);
+          } else {
+            void fetch('/api/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body,
+              keepalive: true
+            }).catch(() => {
+              // Ignorar errores de tracking
+            });
+          }
         }
       } catch {
         // El tracking nunca debe bloquear el redirect
+      }
+
+      if (!shouldSkipContact) {
+        markContactSent(slug, externalId);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 180));
