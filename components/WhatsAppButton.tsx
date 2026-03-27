@@ -201,6 +201,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
+  const clickLockRef = useRef(false);
+  const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
@@ -236,6 +238,10 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
     return () => {
       cancelled = true;
+      if (noPhoneTimeoutRef.current) {
+        clearTimeout(noPhoneTimeoutRef.current);
+        noPhoneTimeoutRef.current = null;
+      }
     };
   }, [slug]);
 
@@ -251,8 +257,9 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
   }
 
   async function handleClick() {
-    if (isLoading || isDisabled) return;
+    if (clickLockRef.current || isLoading || isDisabled) return;
 
+    clickLockRef.current = true;
     setIsLoading(true);
     const tapStartedAt = Date.now();
 
@@ -322,6 +329,14 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       if (!phone) {
         setIsDisabled(true);
+        if (noPhoneTimeoutRef.current) {
+          clearTimeout(noPhoneTimeoutRef.current);
+        }
+        noPhoneTimeoutRef.current = setTimeout(() => {
+          setIsDisabled(false);
+          noPhoneTimeoutRef.current = null;
+        }, 2000);
+        clickLockRef.current = false;
         return;
       }
 
@@ -407,6 +422,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       await new Promise((resolve) => setTimeout(resolve, 180));
       window.location.assign(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+    } catch {
+      clickLockRef.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -433,8 +450,11 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
           ...ctaStyle,
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,.1), 0 10px 24px rgba(0,0,0,.26)',
           pointerEvents: isLoading || isDisabled ? 'none' : undefined,
-          opacity: isLoading || isDisabled ? 0.75 : undefined
+          opacity: isLoading || isDisabled ? 0.75 : undefined,
+          transform: isLoading ? 'scale(0.97)' : undefined,
+          transition: 'transform 120ms ease, opacity 120ms ease'
         }}
+        aria-busy={isLoading}
       >
         <span className="cta__fill">
           {isDisabled ? 'Sin número disponible' : isLoading ? 'Abriendo...' : ctaText}
@@ -457,9 +477,12 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       disabled={isLoading || isDisabled}
       style={{
         ...ctaStyle,
-        boxShadow: `0 0 30px 8px ${config.colors.ctaGlow}`
+        boxShadow: `0 0 30px 8px ${config.colors.ctaGlow}`,
+        transform: isLoading ? 'scale(0.97)' : undefined,
+        transition: 'transform 120ms ease, opacity 120ms ease'
       }}
       aria-label="Crear usuario por WhatsApp"
+      aria-busy={isLoading}
     >
       <span>{isDisabled ? 'Sin número disponible' : isLoading ? 'Abriendo...' : ctaText}</span>
       <img
