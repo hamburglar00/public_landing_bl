@@ -1,13 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  getClientIpAddress as metaGetClientIpAddress,
-  getFbc as metaGetFbc,
-  getFbp as metaGetFbp,
-  processAndCollectAllParams,
-  processAndCollectParams
-} from 'meta-capi-param-builder-clientjs';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig } from '@/lib/landing/types';
 
@@ -18,6 +11,8 @@ type Props = {
 };
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
+type MetaParamBuilderModule = typeof import('meta-capi-param-builder-clientjs');
+let metaParamBuilderModule: MetaParamBuilderModule | null = null;
 
 declare global {
   interface Window {
@@ -227,24 +222,34 @@ async function collectMetaTrackingParams() {
   }
 
   try {
-    await waitWithTimeout(processAndCollectAllParams(window.location.href), 400);
+    const sdk = await loadMetaParamBuilder();
+    await waitWithTimeout(sdk.processAndCollectAllParams(window.location.href), 400);
   } catch {
     try {
-      processAndCollectParams(window.location.href);
+      const sdk = await loadMetaParamBuilder();
+      sdk.processAndCollectParams(window.location.href);
     } catch {
       // Ignorar errores de la libreria para no afectar la UX
     }
   }
 
   try {
+    const sdk = await loadMetaParamBuilder();
     return {
-      fbc: metaGetFbc() || '',
-      fbp: metaGetFbp() || '',
-      clientIpAddress: metaGetClientIpAddress() || ''
+      fbc: sdk.getFbc() || '',
+      fbp: sdk.getFbp() || '',
+      clientIpAddress: sdk.getClientIpAddress() || ''
     };
   } catch {
     return { fbc: '', fbp: '', clientIpAddress: '' };
   }
+}
+
+async function loadMetaParamBuilder(): Promise<MetaParamBuilderModule> {
+  if (metaParamBuilderModule) return metaParamBuilderModule;
+  const sdk = await import('meta-capi-param-builder-clientjs');
+  metaParamBuilderModule = sdk;
+  return sdk;
 }
 
 export default function WhatsAppButton({ slug, config, templateVariant = 'default' }: Props) {
