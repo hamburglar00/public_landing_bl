@@ -1,6 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getClientIpAddress as metaGetClientIpAddress,
+  getFbc as metaGetFbc,
+  getFbp as metaGetFbp,
+  processAndCollectAllParams,
+  processAndCollectParams
+} from 'meta-capi-param-builder-clientjs';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig } from '@/lib/landing/types';
 
@@ -39,55 +46,6 @@ function getDeviceType() {
   if (/tablet|ipad/.test(ua)) return 'tablet';
   if (/mobi|iphone|android/.test(ua)) return 'mobile';
   return 'desktop';
-}
-
-function getCookie(name: string) {
-  if (typeof document === 'undefined') return '';
-  const value = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${name}=`));
-  if (!value) return '';
-  const [, cookieValue] = value.split('=');
-  return decodeURIComponent(cookieValue || '');
-}
-
-function getFbp() {
-  if (typeof window === 'undefined') return '';
-
-  try {
-    const fromCookie = getCookie('_fbp');
-    if (fromCookie) return fromCookie;
-    return '';
-  } catch {
-    return '';
-  }
-}
-
-function getFbc() {
-  if (typeof window === 'undefined') return '';
-
-  try {
-    const fromCookie = getCookie('_fbc');
-    if (fromCookie) return fromCookie;
-
-    const stored = window.localStorage.getItem('_fbc');
-    if (stored) return stored;
-
-    const fbclid = getQueryParam('fbclid');
-    if (!fbclid) return '';
-
-    const ts = Date.now();
-    const generated = `fb.1.${ts}.${fbclid}`;
-
-    window.localStorage.setItem('_fbc', generated);
-    if (typeof document !== 'undefined') {
-      document.cookie = `_fbc=${encodeURIComponent(generated)}; path=/; max-age=63072000`;
-    }
-
-    return generated;
-  } catch {
-    return '';
-  }
 }
 
 function normalizePhone(raw: string) {
@@ -205,6 +163,23 @@ function resolveIdentity() {
     meta.userPhone || ''
   );
 
+  const cityResolved = firstNonEmpty(
+    getQueryParam('ct'),
+    getLocalStorageValue('ct')
+  );
+  const stateResolved = firstNonEmpty(
+    getQueryParam('st'),
+    getLocalStorageValue('st')
+  );
+  const zipResolved = firstNonEmpty(
+    getQueryParam('zip'),
+    getLocalStorageValue('zip')
+  );
+  const countryResolved = firstNonEmpty(
+    getQueryParam('country'),
+    getLocalStorageValue('country')
+  );
+
   const fnResolved = firstNonEmpty(getQueryParam('fn'), meta.userFn || '');
   const lnResolved = firstNonEmpty(getQueryParam('ln'), meta.userLn || '');
 
@@ -220,6 +195,10 @@ function resolveIdentity() {
   return {
     emailRaw: emailResolved,
     phoneRaw: phoneResolved,
+    ct: cityResolved,
+    st: stateResolved,
+    zip: zipResolved,
+    country: countryResolved,
     email,
     ph,
     fn: fnResolved,
@@ -239,6 +218,32 @@ async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promi
     ]);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+async function collectMetaTrackingParams() {
+  if (typeof window === 'undefined') {
+    return { fbc: '', fbp: '', clientIpAddress: '' };
+  }
+
+  try {
+    await waitWithTimeout(processAndCollectAllParams(window.location.href), 400);
+  } catch {
+    try {
+      processAndCollectParams(window.location.href);
+    } catch {
+      // Ignorar errores de la libreria para no afectar la UX
+    }
+  }
+
+  try {
+    return {
+      fbc: metaGetFbc() || '',
+      fbp: metaGetFbp() || '',
+      clientIpAddress: metaGetClientIpAddress() || ''
+    };
+  } catch {
+    return { fbc: '', fbp: '', clientIpAddress: '' };
   }
 }
 
@@ -290,6 +295,12 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     };
   }, [slug]);
 
+  // Inicializa _fbc/_fbp y parametros del SDK oficial de Meta en cuanto carga la landing.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    void collectMetaTrackingParams();
+  }, []);
+
   const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
 
   function extractPhoneId(
@@ -318,8 +329,10 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const email = identity.email;
       const phoneRaw = identity.phoneRaw;
       const ph = identity.ph;
-      const fbp = getFbp();
-      const fbc = getFbc();
+      const metaTracking = await collectMetaTrackingParams();
+      const fbp = metaTracking.fbp;
+      const fbc = metaTracking.fbc;
+      const clientIpAddress = metaTracking.clientIpAddress;
       const utmCampaign = getQueryParam('utm_campaign');
       const testEventCode = getQueryParam('test_event_code');
       const shouldSkipContact = wasContactRecentlySent(slug, externalId);
@@ -427,10 +440,18 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         event_source_url: window.location.href,
         email: emailRaw,
         phone: phoneRaw,
+        fn: identity.fn || undefined,
+        ln: identity.ln || undefined,
+        ct: identity.ct || undefined,
+        st: identity.st || undefined,
+        zip: identity.zip || undefined,
+        country: identity.country || undefined,
         utm_campaign: utmCampaign,
         test_event_code: testEventCode || undefined,
         fbp,
         fbc,
+        client_ip_address: clientIpAddress || undefined,
+        client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
         telefono_asignado: phone,
         promo_code: promoCode,
         source: 'main_button',

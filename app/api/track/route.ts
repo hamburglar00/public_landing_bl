@@ -41,11 +41,16 @@ export async function POST(req: NextRequest) {
 
     const forwardedFor = req.headers.get('x-forwarded-for') || '';
     const userAgent = req.headers.get('user-agent') || '';
+    const requestIp = forwardedFor.split(',')[0]?.trim() || '';
 
     const payload = {
       ...payloadFromClient,
-      clientIP: forwardedFor.split(',')[0]?.trim() || '',
-      agentuser: userAgent,
+      clientIP: payloadFromClient.clientIP ?? requestIp,
+      agentuser: payloadFromClient.agentuser ?? userAgent,
+      client_ip_address:
+        payloadFromClient.client_ip_address ?? requestIp,
+      client_user_agent:
+        payloadFromClient.client_user_agent ?? userAgent,
       timestamp:
         payloadFromClient.timestamp ?? new Date().toISOString(),
       event_time:
