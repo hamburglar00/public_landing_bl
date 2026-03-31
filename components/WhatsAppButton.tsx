@@ -405,8 +405,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       }
 
       // Aviso de teléfono usado al servicio phone-click (no bloquea redirect)
-      // Solo cuando el número se asignó en modo equitativo (según respuesta de landing-phone)
-      if (effectivePhoneMode === 'fair') {
+      // Se envía para los modos de asignación soportados.
+      if (effectivePhoneMode === 'fair' || effectivePhoneMode === 'random') {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
