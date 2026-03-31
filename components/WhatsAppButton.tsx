@@ -440,7 +440,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       const payload = {
         event_name: 'Contact',
-        pixel_id: String(config.tracking.pixelId || '').trim() || undefined,
+        meta_pixel_id: String(config.tracking.pixelId || '').trim() || undefined,
         event_id: eventId,
         external_id: externalId,
         event_source_url: window.location.href,
