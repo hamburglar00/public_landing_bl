@@ -342,7 +342,31 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const testEventCode = getQueryParam('test_event_code');
       const shouldSkipContact = wasContactRecentlySent(slug, externalId);
 
-      // Pixel Contact con eventID y parámetros (igual que landing vieja)
+      // Usa el número pre-cargado; si viene lento, hace un reintento corto.
+      let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
+      if (!phoneData?.phone) {
+        phonePromiseRef.current = null;
+        phoneData = await waitWithTimeout(ensurePhonePromise(), 2500);
+      }
+      const effectivePhoneMode =
+        phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
+
+      const phone = normalizePhone(phoneData?.phone || '');
+
+      if (!phone) {
+        setIsDisabled(true);
+        if (noPhoneTimeoutRef.current) {
+          clearTimeout(noPhoneTimeoutRef.current);
+        }
+        noPhoneTimeoutRef.current = setTimeout(() => {
+          setIsDisabled(false);
+          noPhoneTimeoutRef.current = null;
+        }, 2000);
+        clickLockRef.current = false;
+        return;
+      }
+
+      // Pixel Contact con eventID y parámetros, solo cuando hay teléfono válido.
       try {
         if (!shouldSkipContact && typeof window !== 'undefined' && window.fbq) {
           const contactData: Record<string, unknown> = {
@@ -378,30 +402,6 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
         }
       } catch {
         // Ignorar errores de pixel para no afectar la UX
-      }
-
-      // Usa el número pre-cargado; si viene lento, hace un reintento corto.
-      let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
-      if (!phoneData?.phone) {
-        phonePromiseRef.current = null;
-        phoneData = await waitWithTimeout(ensurePhonePromise(), 2500);
-      }
-      const effectivePhoneMode =
-        phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
-
-      const phone = normalizePhone(phoneData?.phone || '');
-
-      if (!phone) {
-        setIsDisabled(true);
-        if (noPhoneTimeoutRef.current) {
-          clearTimeout(noPhoneTimeoutRef.current);
-        }
-        noPhoneTimeoutRef.current = setTimeout(() => {
-          setIsDisabled(false);
-          noPhoneTimeoutRef.current = null;
-        }, 2000);
-        clickLockRef.current = false;
-        return;
       }
 
       // Aviso de teléfono usado al servicio phone-click (no bloquea redirect)
