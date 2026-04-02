@@ -29,10 +29,9 @@ declare global {
   }
 }
 
-function getQueryParam(name: string) {
-  if (typeof window === 'undefined') return '';
-  const params = new URLSearchParams(window.location.search);
-  return params.get(name) || '';
+function getQueryParamsSnapshot() {
+  if (typeof window === 'undefined') return new URLSearchParams();
+  return new URLSearchParams(window.location.search);
 }
 
 function getDeviceType() {
@@ -141,42 +140,43 @@ function markContactSent(slug: string, externalId: string) {
   }
 }
 
-function resolveIdentity() {
+function resolveIdentity(params: URLSearchParams = getQueryParamsSnapshot()) {
   const meta = readMeta();
+  const getParam = (name: string) => params.get(name) || '';
 
   const emailResolved = firstNonEmpty(
-    getQueryParam('email'),
-    getQueryParam('em'),
+    getParam('email'),
+    getParam('em'),
     getLocalStorageValue('em'),
     meta.userEmail || ''
   );
 
   const phoneResolved = firstNonEmpty(
-    getQueryParam('phone'),
-    getQueryParam('ph'),
+    getParam('phone'),
+    getParam('ph'),
     getLocalStorageValue('ph'),
     meta.userPhone || ''
   );
 
   const cityResolved = firstNonEmpty(
-    getQueryParam('ct'),
+    getParam('ct'),
     getLocalStorageValue('ct')
   );
   const stateResolved = firstNonEmpty(
-    getQueryParam('st'),
+    getParam('st'),
     getLocalStorageValue('st')
   );
   const zipResolved = firstNonEmpty(
-    getQueryParam('zip'),
+    getParam('zip'),
     getLocalStorageValue('zip')
   );
   const countryResolved = firstNonEmpty(
-    getQueryParam('country'),
+    getParam('country'),
     getLocalStorageValue('country')
   );
 
-  const fnResolved = firstNonEmpty(getQueryParam('fn'), meta.userFn || '');
-  const lnResolved = firstNonEmpty(getQueryParam('ln'), meta.userLn || '');
+  const fnResolved = firstNonEmpty(getParam('fn'), meta.userFn || '');
+  const lnResolved = firstNonEmpty(getParam('ln'), meta.userLn || '');
 
   const externalIdResolved = firstNonEmpty(
     meta.externalId || '',
@@ -256,6 +256,11 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
+  const metaTrackingRef = useRef<{ fbc: string; fbp: string; clientIpAddress: string }>({
+    fbc: '',
+    fbp: '',
+    clientIpAddress: ''
+  });
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -303,7 +308,28 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
   // Inicializa _fbc/_fbp y parametros del SDK oficial de Meta en cuanto carga la landing.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    void collectMetaTrackingParams();
+
+    const run = () => {
+      void collectMetaTrackingParams().then((value) => {
+        metaTrackingRef.current = value;
+      });
+    };
+
+    const idleCb = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+
+    if (typeof idleCb === 'function') {
+      const id = idleCb(run, { timeout: 1500 });
+      return () => {
+        const cancel = (window as Window & { cancelIdleCallback?: (idleId: number) => void }).cancelIdleCallback;
+        if (typeof cancel === 'function') cancel(id);
+      };
+    }
+
+    const timeoutId = window.setTimeout(run, 0);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
@@ -325,21 +351,35 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     const tapStartedAt = Date.now();
 
     try {
+      // Permite un paint rápido del estado "Abriendo..." antes del trabajo de click.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+
+      const params = getQueryParamsSnapshot();
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
       const message = buildMessage(promoCode);
       const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
-      const identity = resolveIdentity();
+      const identity = resolveIdentity(params);
       const externalId = identity.externalId;
       const emailRaw = identity.emailRaw;
       const email = identity.email;
       const phoneRaw = identity.phoneRaw;
       const ph = identity.ph;
-      const metaTracking = await collectMetaTrackingParams();
+      let metaTracking = metaTrackingRef.current;
+      if (!metaTracking.fbp && !metaTracking.fbc) {
+        metaTracking = await collectMetaTrackingParams();
+        metaTrackingRef.current = metaTracking;
+      } else {
+        void collectMetaTrackingParams().then((value) => {
+          metaTrackingRef.current = value;
+        });
+      }
       const fbp = metaTracking.fbp;
       const fbc = metaTracking.fbc;
       const clientIpAddress = metaTracking.clientIpAddress;
-      const utmCampaign = getQueryParam('utm_campaign');
-      const testEventCode = getQueryParam('test_event_code');
+      const utmCampaign = params.get('utm_campaign') || '';
+      const testEventCode = params.get('test_event_code') || '';
       const shouldSkipContact = wasContactRecentlySent(slug, externalId);
 
       // Usa el número pre-cargado; si viene lento, hace un reintento corto.
@@ -508,12 +548,15 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     }
   }
 
-  const ctaStyle = {
-    color: config.colors.ctaText,
-    background: config.colors.ctaBackground,
-    fontSize: `${config.typography.cta.sizePx}px`,
-    fontWeight: config.typography.cta.weight
-  };
+  const ctaStyle = useMemo(
+    () => ({
+      color: config.colors.ctaText,
+      background: config.colors.ctaBackground,
+      fontSize: `${config.typography.cta.sizePx}px`,
+      fontWeight: config.typography.cta.weight
+    }),
+    [config.colors.ctaBackground, config.colors.ctaText, config.typography.cta.sizePx, config.typography.cta.weight]
+  );
 
   if (templateVariant === 'template1' || templateVariant === 'template2') {
     return (
