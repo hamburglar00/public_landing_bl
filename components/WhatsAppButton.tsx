@@ -380,7 +380,9 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const clientIpAddress = metaTracking.clientIpAddress;
       const utmCampaign = params.get('utm_campaign') || '';
       const testEventCode = params.get('test_event_code') || '';
-      const shouldSkipContact = wasContactRecentlySent(slug, externalId);
+      const shouldSkipContact = testEventCode
+        ? false
+        : wasContactRecentlySent(slug, externalId);
 
       // Usa el número pre-cargado; si viene lento, hace un reintento corto.
       let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
