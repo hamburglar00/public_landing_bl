@@ -52,11 +52,11 @@ Landing p√∫blica din√°mica por slug. Next.js obtiene la configuraci√≥n desde una
 ### Secuencia en el clic del CTA
 
 1. Se genera `eventId` (UUID) y `promoCode` (`landingTag` + random).
-2. **Pixel**: se dispara `fbq('track', 'Contact', ...)` con `eventID: eventId` (sin esperar respuesta).
-3. **Tel√©fono**: se hace `await ensurePhonePromise()` (usa el prewarm o la misma promesa; no se lanza una segunda petici√≥n nueva).
-4. Si no hay `phone` v√°lido, el bot√≥n se deshabilita y termina.
+2. **TelÈfono**: se hace `await ensurePhonePromise()` (usa el prewarm o la misma promesa; no se lanza una segunda peticiÛn nueva).
+3. Si no hay `phone` v·lido, el botÛn se deshabilita y termina.
+4. **Pixel**: se dispara `fbq('track', 'Contact', ...)` con `eventID: eventId` solo cuando ya hay `phone` v·lido.
 5. **Aviso al constructor (phone-click)**  
-   Solo si `config.phoneSelection?.mode === 'random'`:  
+   Si el modo efectivo del n˙mero es `fair` o `random`:  
    - POST a `{NEXT_PUBLIC_SUPABASE_URL}/functions/v1/phone-click`  
    - Body: `{ "landingName", "phoneId", "phone" }`  
    - Con `sendBeacon` o `fetch` sin `await` (no bloquea).
@@ -101,7 +101,7 @@ Nada de lo anterior (pixel, phone-click, tracking) hace `await` antes del redire
   - `fbp`, `fbc` (formato cookie Meta)
 - **options**:
   - `eventID`: mismo `eventId` (UUID) que se env√≠a al Sheet, para deduplicaci√≥n v√≠a CAPI.
-- Se ejecuta en el mismo flujo del clic, antes de pedir el tel√©fono y redirigir; no se hace `await` a nada de Meta.
+- Se ejecuta en el mismo flujo del clic, despuÈs de validar `phone` y antes del redirect; no se hace `await` a nada de Meta.
 
 ### Resumen de datos enviados a Meta
 
@@ -122,6 +122,7 @@ Nada de lo anterior (pixel, phone-click, tracking) hace `await` antes del redire
 
 - `postUrl`: `config.tracking.postUrl` (URL del Sheet / webhook que el backend use).
 - `event_name`: `'Contact'`
+- `meta_pixel_id`: `config.tracking.pixelId` (normalizado)
 - `event_id`: UUID del evento (mismo que `eventID` del Pixel).
 - `external_id`: `getOrCreateExternalId()` (mismo que en el init del Pixel).
 - `event_source_url`: `window.location.href`
@@ -151,6 +152,7 @@ Nada de lo anterior (pixel, phone-click, tracking) hace `await` antes del redire
 Nota importante:
 - La landing **no** envÌa `em`, `ph` ni otros campos SHA256 al backend.
 - El hashing/normalizaciÛn final para CAPI se hace del lado backend para evitar doble hash.
+- Si la URL contiene `test_event_code`, se omite el anti-r·faga (`dedupe TTL`) para facilitar pruebas repetidas en Test Events.
 
 ### Qu√© hace `/api/track`
 
