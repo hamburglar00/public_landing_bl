@@ -360,6 +360,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
       const message = buildMessage(promoCode);
       const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
+      const sendContactPixel = config.tracking.send_contact_pixel !== false;
       const identity = resolveIdentity(params);
       const externalId = identity.externalId;
       const emailRaw = identity.emailRaw;
@@ -410,7 +411,12 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
 
       // Pixel Contact con eventID y parámetros, solo cuando hay teléfono válido.
       try {
-        if (!shouldSkipContact && typeof window !== 'undefined' && window.fbq) {
+        if (
+          sendContactPixel &&
+          !shouldSkipContact &&
+          typeof window !== 'undefined' &&
+          window.fbq
+        ) {
           const contactData: Record<string, unknown> = {
             source: 'main_button',
             external_id: externalId
@@ -483,6 +489,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const payload = {
         event_name: 'Contact',
         meta_pixel_id: String(config.tracking.pixelId || '').trim() || undefined,
+        send_contact_pixel: sendContactPixel,
         event_id: eventId,
         external_id: externalId,
         event_source_url: window.location.href,
