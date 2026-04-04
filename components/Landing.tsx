@@ -1,9 +1,11 @@
+import dynamic from 'next/dynamic';
 import PixelInit from '@/components/PixelInit';
 import RotatingBackground from '@/components/RotatingBackground';
-import Template2View from '@/components/Template2View';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
+
+const Template2View = dynamic(() => import('@/components/Template2View'));
 
 type Props = {
   slug: string;
