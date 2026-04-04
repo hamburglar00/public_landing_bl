@@ -8,6 +8,7 @@ export type LandingConfig = {
     pixelId: string;
     postUrl: string;
     landingTag: string;
+    sendContactPixel?: boolean;
     send_contact_pixel?: boolean;
   };
   phoneSelection?: {

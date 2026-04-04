@@ -360,7 +360,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
       const message = buildMessage(promoCode);
       const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
-      const sendContactPixel = config.tracking.send_contact_pixel !== false;
+      const sendContactPixel =
+        (config.tracking.sendContactPixel ?? config.tracking.send_contact_pixel) !== false;
       const identity = resolveIdentity(params);
       const externalId = identity.externalId;
       const emailRaw = identity.emailRaw;
