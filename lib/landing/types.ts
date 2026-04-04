@@ -9,7 +9,6 @@ export type LandingConfig = {
     postUrl: string;
     landingTag: string;
     sendContactPixel?: boolean;
-    send_contact_pixel?: boolean;
   };
   phoneSelection?: {
     mode: 'random' | 'fixed' | 'fair' | string;
