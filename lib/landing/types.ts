@@ -63,7 +63,7 @@ export type LandingConfig = {
       | 'bottom'
       | 'below_info'
       | string;
-    /** 2 = plantilla 2 (marco negro, posiciones fijas); ausente u otro = config actual */
+    /** 2 = plantilla 2; 3 = redirección directa; ausente u otro = plantilla base */
     template?: number;
   };
 };

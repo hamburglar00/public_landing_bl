@@ -6,6 +6,7 @@ import type { LandingConfig } from '@/lib/landing/types';
 import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
 
 const Template2View = dynamic(() => import('@/components/Template2View'));
+const Template3View = dynamic(() => import('@/components/Template3View'));
 
 type Props = {
   slug: string;
@@ -28,6 +29,7 @@ export default function Landing({ slug, config }: Props) {
 
   const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isTemplate2 = config.layout?.template === 2;
+  const isTemplate3 = config.layout?.template === 3;
   const pixelBlock = config.tracking.pixelId ? (
     <>
       <PixelInit pixelId={config.tracking.pixelId} />
@@ -48,6 +50,15 @@ export default function Landing({ slug, config }: Props) {
       <>
         {pixelBlock}
         <Template2View slug={slug} config={config} />
+      </>
+    );
+  }
+
+  if (isTemplate3) {
+    return (
+      <>
+        {pixelBlock}
+        <Template3View slug={slug} config={config} />
       </>
     );
   }

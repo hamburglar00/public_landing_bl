@@ -7,7 +7,9 @@ import type { LandingConfig } from '@/lib/landing/types';
 type Props = {
   slug: string;
   config: LandingConfig;
-  templateVariant?: 'default' | 'template1' | 'template2';
+  templateVariant?: 'default' | 'template1' | 'template2' | 'template3';
+  autoStart?: boolean;
+  hideButton?: boolean;
 };
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
@@ -252,7 +254,13 @@ async function loadMetaParamBuilder(): Promise<MetaParamBuilderModule> {
   return sdk;
 }
 
-export default function WhatsAppButton({ slug, config, templateVariant = 'default' }: Props) {
+export default function WhatsAppButton({
+  slug,
+  config,
+  templateVariant = 'default',
+  autoStart = false,
+  hideButton = false
+}: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
@@ -263,6 +271,7 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
   });
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoStartOnceRef = useRef(false);
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
@@ -331,6 +340,14 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     const timeoutId = window.setTimeout(run, 0);
     return () => window.clearTimeout(timeoutId);
   }, []);
+
+  // Permite reutilizar toda la lógica de tracking/redirect para flujos automáticos (template 3).
+  useEffect(() => {
+    if (!autoStart || autoStartOnceRef.current) return;
+    autoStartOnceRef.current = true;
+    void handleClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
 
@@ -566,6 +583,8 @@ export default function WhatsAppButton({ slug, config, templateVariant = 'defaul
     }),
     [config.colors.ctaBackground, config.colors.ctaText, config.typography.cta.sizePx, config.typography.cta.weight]
   );
+
+  if (hideButton) return null;
 
   if (templateVariant === 'template1' || templateVariant === 'template2') {
     return (
