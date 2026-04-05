@@ -12,12 +12,12 @@ type Props = {
 
 export default function Template2View({ slug, config }: Props) {
   const images = config.background?.images || [];
-  const hasLogo = Boolean(config.content.logoUrl);
-  const titleLines = config.content.title || [];
-  const subtitleLines = config.content.subtitle || [];
-  const badgeArray = config.content.footerBadge || [];
+  const hasLogo = Boolean(config.content?.logoUrl);
+  const titleLines = config.content?.title || [];
+  const subtitleLines = config.content?.subtitle || [];
+  const badgeArray = config.content?.footerBadge || [];
   const badgeText =
-    (badgeArray.find((line) => line && line.trim().length > 0) || config.content.footerBadgeText || '').trim();
+    (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
 
   return (
@@ -30,12 +30,12 @@ export default function Template2View({ slug, config }: Props) {
           <div className="frame">
             <FrameBackgroundTemplate2
               images={images}
-              rotateEveryHours={config.background.rotateEveryHours}
+              rotateEveryHours={config.background?.rotateEveryHours}
             />
             {hasLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={config.content.logoUrl}
+                src={config.content?.logoUrl}
                 alt={config.name}
                 className="frame__logo"
                 decoding="async"
@@ -48,9 +48,9 @@ export default function Template2View({ slug, config }: Props) {
                 <p
                   className="eyebrow"
                   style={{
-                    color: config.colors.badge,
-                    fontSize: `${config.typography.badge.sizePx}px`,
-                    fontWeight: config.typography.badge.weight
+                    color: config.colors?.badge ?? '#FFD700',
+                    fontSize: `${config.typography?.badge?.sizePx ?? 16}px`,
+                    fontWeight: config.typography?.badge?.weight ?? 700
                   }}
                 >
                   {badgeText}
@@ -59,9 +59,9 @@ export default function Template2View({ slug, config }: Props) {
               <h1
                 className="title"
                 style={{
-                  color: config.colors.title,
-                  fontSize: `${config.typography.title.sizePx}px`,
-                  fontWeight: config.typography.title.weight
+                  color: config.colors?.title ?? '#FFFFFF',
+                  fontSize: `${config.typography?.title?.sizePx ?? 26}px`,
+                  fontWeight: config.typography?.title?.weight ?? 700
                 }}
               >
                 {titleLines.map((line, idx) => (
@@ -81,9 +81,9 @@ export default function Template2View({ slug, config }: Props) {
               <p
                 key={`${slug}-t2-sub-${idx}`}
                 style={{
-                  color: config.colors.subtitle,
-                  fontSize: `${config.typography.subtitle.sizePx}px`,
-                  fontWeight: config.typography.subtitle.weight
+                  color: config.colors?.subtitle ?? '#FFFFFF',
+                  fontSize: `${config.typography?.subtitle?.sizePx ?? 16}px`,
+                  fontWeight: config.typography?.subtitle?.weight ?? 400
                 }}
               >
                 {line}

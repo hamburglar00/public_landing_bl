@@ -13,12 +13,12 @@ export type LandingConfig = {
   phoneSelection?: {
     mode: 'random' | 'fixed' | 'fair' | string;
   };
-  background: {
+  background?: {
     mode: 'single' | 'rotating';
     images: string[];
     rotateEveryHours: number;
   };
-  content: {
+  content?: {
     logoUrl: string;
     title: string[];
     subtitle: string[];
@@ -28,7 +28,7 @@ export type LandingConfig = {
     footerBadge?: string[];
     ctaText: string;
   };
-  typography: {
+  typography?: {
     fontFamily: 'system' | string;
     title: {
       sizePx: number;
@@ -47,7 +47,7 @@ export type LandingConfig = {
       weight: number;
     };
   };
-  colors: {
+  colors?: {
     title: string;
     subtitle: string;
     badge: string;

@@ -349,7 +349,7 @@ export default function WhatsAppButton({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
-  const ctaText = useMemo(() => config.content.ctaText || '¡Contactar ya!', [config]);
+  const ctaText = useMemo(() => config.content?.ctaText || '¡Contactar ya!', [config.content?.ctaText]);
 
   function extractPhoneId(
     phoneData: Awaited<ReturnType<typeof getLandingPhone>> | null
@@ -532,7 +532,7 @@ export default function WhatsAppButton({
         landing_name: config.name,
         device_type: getDeviceType(),
         cta_tap_to_redirect_ms: Date.now() - tapStartedAt,
-        mode: config.background.mode,
+        mode: config.background?.mode,
         api_meta: null
       };
 
@@ -576,12 +576,12 @@ export default function WhatsAppButton({
 
   const ctaStyle = useMemo(
     () => ({
-      color: config.colors.ctaText,
-      background: config.colors.ctaBackground,
-      fontSize: `${config.typography.cta.sizePx}px`,
-      fontWeight: config.typography.cta.weight
+      color: config.colors?.ctaText ?? '#FFFFFF',
+      background: config.colors?.ctaBackground ?? '#25D366',
+      fontSize: `${config.typography?.cta?.sizePx ?? 18}px`,
+      fontWeight: config.typography?.cta?.weight ?? 700
     }),
-    [config.colors.ctaBackground, config.colors.ctaText, config.typography.cta.sizePx, config.typography.cta.weight]
+    [config.colors?.ctaBackground, config.colors?.ctaText, config.typography?.cta?.sizePx, config.typography?.cta?.weight]
   );
 
   if (hideButton) return null;
@@ -627,7 +627,7 @@ export default function WhatsAppButton({
       disabled={isLoading || isDisabled}
       style={{
         ...ctaStyle,
-        boxShadow: `0 0 30px 8px ${config.colors.ctaGlow}`,
+        boxShadow: `0 0 30px 8px ${config.colors?.ctaGlow ?? '#FFD700'}`,
         transform: isLoading ? 'scale(0.97)' : undefined,
         transition: 'transform 120ms ease, opacity 120ms ease'
       }}
@@ -644,3 +644,4 @@ export default function WhatsAppButton({
     </button>
   );
 }
+

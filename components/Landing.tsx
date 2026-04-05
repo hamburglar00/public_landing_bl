@@ -14,22 +14,9 @@ type Props = {
 };
 
 export default function Landing({ slug, config }: Props) {
-  const images = config.background?.images || [];
-  const hasLogo = Boolean(config.content.logoUrl);
-  const titleLines = config.content.title || [];
-  const subtitleLines = config.content.subtitle || [];
-  const badgeText = config.content.footerBadgeText || '';
-
-  const rawCtaPosition = config.layout?.ctaPosition ?? 'between_title_and_info';
-  const normalizedCtaPosition = (() => {
-    const value = rawCtaPosition === 'below_info' ? 'between_info_and_badge' : rawCtaPosition;
-    const allowed = ['top', 'between_title_and_info', 'between_info_and_badge', 'bottom'] as const;
-    return allowed.includes(value as (typeof allowed)[number]) ? value : 'between_title_and_info';
-  })();
-
-  const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isTemplate2 = config.layout?.template === 2;
   const isTemplate3 = config.layout?.template === 3;
+
   const pixelBlock = config.tracking.pixelId ? (
     <>
       <PixelInit pixelId={config.tracking.pixelId} />
@@ -45,20 +32,35 @@ export default function Landing({ slug, config }: Props) {
     </>
   ) : null;
 
-  if (isTemplate2) {
-    return (
-      <>
-        {pixelBlock}
-        <Template2View slug={slug} config={config} />
-      </>
-    );
-  }
-
   if (isTemplate3) {
     return (
       <>
         {pixelBlock}
         <Template3View slug={slug} config={config} />
+      </>
+    );
+  }
+
+  const images = config.background?.images || [];
+  const hasLogo = Boolean(config.content?.logoUrl);
+  const titleLines = config.content?.title || [];
+  const subtitleLines = config.content?.subtitle || [];
+  const badgeText = config.content?.footerBadgeText || '';
+
+  const rawCtaPosition = config.layout?.ctaPosition ?? 'between_title_and_info';
+  const normalizedCtaPosition = (() => {
+    const value = rawCtaPosition === 'below_info' ? 'between_info_and_badge' : rawCtaPosition;
+    const allowed = ['top', 'between_title_and_info', 'between_info_and_badge', 'bottom'] as const;
+    return allowed.includes(value as (typeof allowed)[number]) ? value : 'between_title_and_info';
+  })();
+
+  const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
+
+  if (isTemplate2) {
+    return (
+      <>
+        {pixelBlock}
+        <Template2View slug={slug} config={config} />
       </>
     );
   }
@@ -70,7 +72,7 @@ export default function Landing({ slug, config }: Props) {
       <section className="container background-image">
         <RotatingBackground
           images={images}
-          rotateEveryHours={config.background.rotateEveryHours}
+          rotateEveryHours={config.background?.rotateEveryHours}
           overlay={false}
         />
 
@@ -78,7 +80,7 @@ export default function Landing({ slug, config }: Props) {
           {hasLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={config.content.logoUrl}
+              src={config.content?.logoUrl}
               className="logo"
               alt={config.name}
               decoding="async"
@@ -91,9 +93,9 @@ export default function Landing({ slug, config }: Props) {
           <p
             className="title"
             style={{
-              color: config.colors.title,
-              fontSize: `${config.typography.title.sizePx}px`,
-              fontWeight: config.typography.title.weight
+              color: config.colors?.title ?? '#FFFFFF',
+              fontSize: `${config.typography?.title?.sizePx ?? 26}px`,
+              fontWeight: config.typography?.title?.weight ?? 700
             }}
           >
             {titleLines.map((line, idx) => (
@@ -111,9 +113,9 @@ export default function Landing({ slug, config }: Props) {
           <p
             className="subtitle"
             style={{
-              color: config.colors.subtitle,
-              fontSize: `${config.typography.subtitle.sizePx}px`,
-              fontWeight: config.typography.subtitle.weight
+              color: config.colors?.subtitle ?? '#FFFFFF',
+              fontSize: `${config.typography?.subtitle?.sizePx ?? 16}px`,
+              fontWeight: config.typography?.subtitle?.weight ?? 400
             }}
           >
             {subtitleLines.map((line, idx) => (
@@ -132,9 +134,9 @@ export default function Landing({ slug, config }: Props) {
             <p
               className="description"
               style={{
-                color: config.colors.badge,
-                fontSize: `${config.typography.badge.sizePx}px`,
-                fontWeight: config.typography.badge.weight
+                color: config.colors?.badge ?? '#FFD700',
+                fontSize: `${config.typography?.badge?.sizePx ?? 16}px`,
+                fontWeight: config.typography?.badge?.weight ?? 700
               }}
             >
               -{badgeText}-
