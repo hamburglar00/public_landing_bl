@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const MAX_UPSTREAM_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [0, 250, 700];
+
+async function sleep(ms: number) {
+  if (ms <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -57,18 +65,38 @@ export async function POST(req: NextRequest) {
         payloadFromClient.event_time ?? Math.floor(Date.now() / 1000)
     };
 
-    const response = await fetch(postUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      cache: 'no-store'
-    });
+    let response: Response | null = null;
+    let text = '';
+    let lastError: unknown = null;
 
-    const text = await response.text();
+    for (let attempt = 0; attempt < MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
+      await sleep(RETRY_DELAYS_MS[attempt] ?? 0);
+      try {
+        response = await fetch(postUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          cache: 'no-store'
+        });
+        text = await response.text();
 
-    if (!response.ok) {
+        // Corta reintentos solo cuando el constructor devuelve 200.
+        if (response.status === 200) {
+          break;
+        }
+      } catch (error) {
+        lastError = error;
+        response = null;
+        text = '';
+      }
+    }
+
+    if (!response || response.status !== 200) {
       return NextResponse.json(
-        { error: 'tracking_upstream_error', details: text },
+        {
+          error: 'tracking_upstream_error',
+          details: text || (lastError instanceof Error ? lastError.message : 'upstream_no_response')
+        },
         { status: 502 }
       );
     }
