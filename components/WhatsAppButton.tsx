@@ -527,6 +527,7 @@ export default function WhatsAppButton({
         telefono_asignado: phone,
         promo_code: promoCode,
         source: 'main_button',
+        source_platform: 'landing',
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
