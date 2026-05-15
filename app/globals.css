@@ -360,12 +360,12 @@ select {
   position: absolute;
   inset: -4px;
   border-radius: inherit;
-  border: 2px solid rgba(255, 255, 255, 0.34);
+  border: 2px solid rgba(255, 255, 255, 0.44);
   opacity: 0;
   transform: scale(1);
   pointer-events: none;
   z-index: 0;
-  animation: ctaPulseRing 2.2s ease-out infinite;
+  animation: ctaPulseRing 1.45s ease-out infinite;
 }
 
 .lp .cta > * {
@@ -394,16 +394,16 @@ select {
 
 @keyframes ctaPulseRing {
   0% {
-    opacity: 0.34;
+    opacity: 0.48;
     transform: scale(1);
   }
   70% {
     opacity: 0;
-    transform: scale(1.08);
+    transform: scale(1.13);
   }
   100% {
     opacity: 0;
-    transform: scale(1.08);
+    transform: scale(1.13);
   }
 }
 
