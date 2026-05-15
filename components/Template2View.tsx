@@ -76,6 +76,15 @@ export default function Template2View({ slug, config }: Props) {
 
           <WhatsAppButton slug={slug} config={config} templateVariant="template2" />
 
+          <section className="social-proof" aria-label="Prueba social">
+            <p className="social-proof__quote">
+              "Muy buena atención. Me cargaron al instante y sin vueltas."
+            </p>
+            <p className="social-proof__meta">
+              Nico R. <span aria-hidden="true">·</span> <span className="social-proof__stars">★★★★★</span>
+            </p>
+          </section>
+
           <div className="features">
             {subtitleLines.map((line, idx) => (
               <p

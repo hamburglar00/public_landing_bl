@@ -445,6 +445,40 @@ select {
   flex: 0 0 auto;
 }
 
+.lp .social-proof {
+  width: 86%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.lp .social-proof__quote {
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.28;
+  font-weight: 600;
+  text-align: left;
+}
+
+.lp .social-proof__meta {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  text-align: left;
+}
+
+.lp .social-proof__stars {
+  color: #ffd24b;
+  letter-spacing: 1px;
+}
+
 .lp .features {
   margin-top: 18px;
   text-align: center;
@@ -511,6 +545,21 @@ select {
   .lp .cta__icon {
     width: 20px;
     height: 20px;
+  }
+
+  .lp .social-proof {
+    width: 88%;
+    margin-top: 10px;
+    padding: 9px 10px;
+    border-radius: 11px;
+  }
+
+  .lp .social-proof__quote {
+    font-size: 12px;
+  }
+
+  .lp .social-proof__meta {
+    font-size: 11px;
   }
 
   .lp .features {
