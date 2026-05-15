@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import FrameBackgroundTemplate2 from '@/components/FrameBackgroundTemplate2';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
@@ -19,6 +20,22 @@ export default function Template2View({ slug, config }: Props) {
   const badgeText =
     (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
+  const socialProofItems = [
+    { quote: 'Muy buena atencion. Me cargaron al instante y sin vueltas.', name: 'Nico R.' },
+    { quote: 'Pague y en minutos ya estaba jugando. Super confiables.', name: 'Juan P.' },
+    { quote: 'Siempre responden rapido, excelente servicio las 24hs.', name: 'Mica F.' }
+  ];
+  const [socialProofIndex, setSocialProofIndex] = useState(0);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setSocialProofIndex((current) => (current + 1) % socialProofItems.length);
+    }, 3200);
+
+    return () => window.clearInterval(intervalId);
+  }, [socialProofItems.length]);
+
+  const activeSocialProof = socialProofItems[socialProofIndex];
 
   return (
     <main className="lp">
@@ -77,11 +94,10 @@ export default function Template2View({ slug, config }: Props) {
           <WhatsAppButton slug={slug} config={config} templateVariant="template2" />
 
           <section className="social-proof" aria-label="Prueba social">
-            <p className="social-proof__quote">
-              "Muy buena atención. Me cargaron al instante y sin vueltas."
-            </p>
+            <p className="social-proof__quote">"{activeSocialProof.quote}"</p>
             <p className="social-proof__meta">
-              Nico R. <span aria-hidden="true">·</span> <span className="social-proof__stars">★★★★★</span>
+              {activeSocialProof.name} <span aria-hidden="true">·</span>{' '}
+              <span className="social-proof__stars">★★★★★</span>
             </p>
           </section>
 
