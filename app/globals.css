@@ -353,6 +353,7 @@ select {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   overflow: visible;
   isolation: isolate;
+  animation: ctaHeartbeat 1.6s ease-in-out infinite;
 }
 
 .lp .cta::after {
@@ -404,6 +405,23 @@ select {
   100% {
     opacity: 0;
     transform: scale(1.13);
+  }
+}
+
+@keyframes ctaHeartbeat {
+  0%,
+  64%,
+  100% {
+    transform: scale(1);
+  }
+  72% {
+    transform: scale(1.02);
+  }
+  80% {
+    transform: scale(1);
+  }
+  88% {
+    transform: scale(1.013);
   }
 }
 
