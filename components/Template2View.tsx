@@ -109,7 +109,7 @@ export default function Template2View({ slug, config }: Props) {
             </p>
             <p className="social-proof__meta">
               {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
-              <span className="social-proof__stars">★★★★★</span>
+              <span className="social-proof__stars">{'\u2605'.repeat(5)}</span>
             </p>
             <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
           </section>
