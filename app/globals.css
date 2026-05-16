@@ -463,6 +463,7 @@ select {
   line-height: 1.28;
   font-weight: 600;
   text-align: left;
+  animation: socialProofFadeIn 420ms ease;
 }
 
 .lp .social-proof__meta {
@@ -477,6 +478,35 @@ select {
 .lp .social-proof__stars {
   color: #ffd24b;
   letter-spacing: 1px;
+}
+
+.lp .social-proof__progress {
+  width: 0%;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #25d366;
+  animation: socialProofProgress 5s linear forwards;
+}
+
+@keyframes socialProofFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes socialProofProgress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 .lp .features {

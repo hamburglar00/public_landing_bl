@@ -11,6 +11,21 @@ type Props = {
   config: LandingConfig;
 };
 
+const SOCIAL_PROOF_INTERVAL_MS = 5000;
+
+const SOCIAL_PROOF_ITEMS = [
+  { quote: 'Muy buena atencion. Me cargaron al instante y sin vueltas.', name: 'Nico R.' },
+  { quote: 'Pague y en minutos ya estaba jugando. Super confiables.', name: 'Juan P.' },
+  { quote: 'Siempre responden rapido, excelente servicio las 24hs.', name: 'Mica F.' },
+  { quote: 'Recargue y me acreditaron rapido. Cero drama.', name: 'Seba L.' },
+  { quote: 'Me ayudaron en todo, ideal si recien arrancas.', name: 'Romi D.' },
+  { quote: 'Atencion impecable. Responden al toque por WhatsApp.', name: 'Lau T.' },
+  { quote: 'Confiables de verdad, ya cobre varias veces.', name: 'Dario C.' },
+  { quote: 'Todo claro y sin vueltas. Recomiendo.', name: 'Cami V.' },
+  { quote: 'Excelente servicio, cargue de noche y fue instantaneo.', name: 'Pablo M.' },
+  { quote: 'Buenisimos bonos y muy buena onda para atender.', name: 'Gise A.' }
+];
+
 export default function Template2View({ slug, config }: Props) {
   const images = config.background?.images || [];
   const hasLogo = Boolean(config.content?.logoUrl);
@@ -20,22 +35,17 @@ export default function Template2View({ slug, config }: Props) {
   const badgeText =
     (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
-  const socialProofItems = [
-    { quote: 'Muy buena atencion. Me cargaron al instante y sin vueltas.', name: 'Nico R.' },
-    { quote: 'Pague y en minutos ya estaba jugando. Super confiables.', name: 'Juan P.' },
-    { quote: 'Siempre responden rapido, excelente servicio las 24hs.', name: 'Mica F.' }
-  ];
   const [socialProofIndex, setSocialProofIndex] = useState(0);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      setSocialProofIndex((current) => (current + 1) % socialProofItems.length);
-    }, 3200);
+      setSocialProofIndex((current) => (current + 1) % SOCIAL_PROOF_ITEMS.length);
+    }, SOCIAL_PROOF_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [socialProofItems.length]);
+  }, []);
 
-  const activeSocialProof = socialProofItems[socialProofIndex];
+  const activeSocialProof = SOCIAL_PROOF_ITEMS[socialProofIndex];
 
   return (
     <main className="lp">
@@ -94,11 +104,14 @@ export default function Template2View({ slug, config }: Props) {
           <WhatsAppButton slug={slug} config={config} templateVariant="template2" />
 
           <section className="social-proof" aria-label="Prueba social">
-            <p className="social-proof__quote">"{activeSocialProof.quote}"</p>
-            <p className="social-proof__meta">
-              {activeSocialProof.name} <span aria-hidden="true">·</span>{' '}
-              <span className="social-proof__stars">★★★★★</span>
+            <p key={`quote-${socialProofIndex}`} className="social-proof__quote">
+              "{activeSocialProof.quote}"
             </p>
+            <p className="social-proof__meta">
+              {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
+              <span className="social-proof__stars">?????</span>
+            </p>
+            <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
           </section>
 
           <div className="features">
