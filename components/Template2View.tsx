@@ -35,6 +35,7 @@ export default function Template2View({ slug, config }: Props) {
   const badgeText =
     (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
+  const isSocialProofEnabled = config.socialProof?.enabled !== false;
   const [socialProofIndex, setSocialProofIndex] = useState(0);
 
   useEffect(() => {
@@ -103,16 +104,18 @@ export default function Template2View({ slug, config }: Props) {
 
           <WhatsAppButton slug={slug} config={config} templateVariant="template2" />
 
-          <section className="social-proof" aria-label="Prueba social">
-            <p key={`quote-${socialProofIndex}`} className="social-proof__quote">
-              "{activeSocialProof.quote}"
-            </p>
-            <p className="social-proof__meta">
-              {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
-              <span className="social-proof__stars">{'\u2605'.repeat(5)}</span>
-            </p>
-            <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
-          </section>
+          {isSocialProofEnabled ? (
+            <section className="social-proof" aria-label="Prueba social">
+              <p key={`quote-${socialProofIndex}`} className="social-proof__quote">
+                "{activeSocialProof.quote}"
+              </p>
+              <p className="social-proof__meta">
+                {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
+                <span className="social-proof__stars">{'\u2605'.repeat(5)}</span>
+              </p>
+              <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
+            </section>
+          ) : null}
 
           <div className="features">
             {subtitleLines.map((line, idx) => (

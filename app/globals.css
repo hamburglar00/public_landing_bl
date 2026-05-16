@@ -454,7 +454,7 @@ select {
 
 .lp .social-proof {
   width: 80%;
-  margin-top: 8px;
+  margin-top: 16px;
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.1);
@@ -586,7 +586,7 @@ select {
 
   .lp .social-proof {
     width: 80%;
-    margin-top: 7px;
+    margin-top: 14px;
     padding: 7px 9px;
     border-radius: 11px;
   }

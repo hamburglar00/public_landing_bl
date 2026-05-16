@@ -55,6 +55,9 @@ export type LandingConfig = {
     ctaBackground: string;
     ctaGlow: string;
   };
+  socialProof?: {
+    enabled?: boolean;
+  };
   layout: {
     ctaPosition:
       | 'top'
