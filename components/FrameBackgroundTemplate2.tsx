@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 
 type Props = {
   images: string[];
@@ -32,13 +33,14 @@ export default function FrameBackgroundTemplate2({
   if (!currentImage) return null;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={currentImage}
       alt=""
       className="frame__bg"
-      decoding="async"
-      fetchPriority="high"
+      fill
+      priority
+      sizes="(max-width: 430px) 100vw, 430px"
+      quality={82}
     />
   );
 }

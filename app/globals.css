@@ -202,11 +202,17 @@ select {
   }
 
   .lp .cta {
+    animation: none !important;
     transition: none;
   }
 
   .lp .cta:hover {
     transform: none;
+  }
+
+  .lp .social-proof__quote,
+  .lp .social-proof__progress {
+    animation: none !important;
   }
 }
 
@@ -361,6 +367,7 @@ select {
   overflow: visible;
   isolation: isolate;
   animation: ctaHeartbeat 1.6s ease-in-out infinite;
+  will-change: transform;
 }
 
 .lp .cta::after {
@@ -374,6 +381,7 @@ select {
   pointer-events: none;
   z-index: 0;
   animation: ctaPulseRing 1.45s ease-out infinite;
+  will-change: transform, opacity;
 }
 
 .lp .cta > * {
@@ -471,6 +479,7 @@ select {
   font-weight: 600;
   text-align: left;
   animation: socialProofFadeIn 420ms ease;
+  will-change: transform, opacity;
 }
 
 .lp .social-proof__meta {
@@ -488,12 +497,15 @@ select {
 }
 
 .lp .social-proof__progress {
-  width: 0%;
+  width: 100%;
   height: 3px;
   margin-top: 8px;
   border-radius: 999px;
   background: #25d366;
+  transform: scaleX(0);
+  transform-origin: left center;
   animation: socialProofProgress 5s linear forwards;
+  will-change: transform;
 }
 
 @keyframes socialProofFadeIn {
@@ -509,10 +521,10 @@ select {
 
 @keyframes socialProofProgress {
   from {
-    width: 0%;
+    transform: scaleX(0);
   }
   to {
-    width: 100%;
+    transform: scaleX(1);
   }
 }
 
