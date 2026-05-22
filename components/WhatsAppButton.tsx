@@ -56,7 +56,7 @@ function generatePromoCode(tag: string) {
 }
 
 function buildMessage(promoCode: string) {
-  return `Hola! Vi este anuncio, me pasás info? ${promoCode}`.trim();
+  return `Hola! quiero mas informacion por favor! Mi codigo es: ${promoCode} y mi nombre es:`.trim();
 }
 
 function getOrCreateExternalId() {
@@ -216,6 +216,28 @@ async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promi
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
+}
+
+async function sendTrackBestEffort(body: string) {
+  const fetchFallback = () =>
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true
+    });
+
+  if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+    try {
+      const blob = new Blob([body], { type: 'application/json' });
+      const queued = navigator.sendBeacon('/api/track', blob);
+      if (queued) return;
+    } catch {
+      // Ignorar y seguir con fetch fallback
+    }
+  }
+
+  await fetchFallback();
 }
 
 async function collectMetaTrackingParams() {
@@ -543,20 +565,9 @@ export default function WhatsAppButton({
             postUrl: config.tracking.postUrl,
             payload
           });
-
-          if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-            const blob = new Blob([body], { type: 'application/json' });
-            navigator.sendBeacon('/api/track', blob);
-          } else {
-            void fetch('/api/track', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body,
-              keepalive: true
-            }).catch(() => {
-              // Ignorar errores de tracking
-            });
-          }
+          void sendTrackBestEffort(body).catch(() => {
+            // Ignorar errores de tracking
+          });
         }
       } catch {
         // El tracking nunca debe bloquear el redirect
