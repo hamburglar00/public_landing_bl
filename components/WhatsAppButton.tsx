@@ -10,6 +10,7 @@ type Props = {
   templateVariant?: 'default' | 'template1' | 'template2' | 'template3';
   autoStart?: boolean;
   hideButton?: boolean;
+  externalTriggerEvent?: string;
 };
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
@@ -281,7 +282,8 @@ export default function WhatsAppButton({
   config,
   templateVariant = 'default',
   autoStart = false,
-  hideButton = false
+  hideButton = false,
+  externalTriggerEvent
 }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
@@ -294,6 +296,7 @@ export default function WhatsAppButton({
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStartOnceRef = useRef(false);
+  const handleClickRef = useRef<() => Promise<void>>(async () => {});
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
@@ -585,6 +588,19 @@ export default function WhatsAppButton({
       setIsLoading(false);
     }
   }
+
+  useEffect(() => {
+    handleClickRef.current = handleClick;
+  });
+
+  useEffect(() => {
+    if (!externalTriggerEvent || typeof window === 'undefined') return;
+    const listener = () => {
+      void handleClickRef.current();
+    };
+    window.addEventListener(externalTriggerEvent, listener);
+    return () => window.removeEventListener(externalTriggerEvent, listener);
+  }, [externalTriggerEvent]);
 
   const ctaStyle = useMemo(
     () => ({

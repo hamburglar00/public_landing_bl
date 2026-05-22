@@ -16,6 +16,11 @@ type Props = {
 export default function Landing({ slug, config }: Props) {
   const isTemplate2 = config.layout?.template === 2;
   const isTemplate3 = config.layout?.template === 3;
+  const sharedTriggerEvent = `lp:cta-trigger:${slug}`;
+  const triggerWhatsApp = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event(sharedTriggerEvent));
+  };
 
   const pixelBlock = config.tracking.pixelId ? (
     <>
@@ -85,17 +90,23 @@ export default function Landing({ slug, config }: Props) {
               alt={config.name}
               decoding="async"
               fetchPriority="high"
+              onClick={triggerWhatsApp}
+              style={{ cursor: 'pointer' }}
             />
           ) : null}
 
-          {normalizedCtaPosition === 'top' ? <WhatsAppButton slug={slug} config={config} /> : null}
+          {normalizedCtaPosition === 'top' ? (
+            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
+          ) : null}
 
           <p
             className="title"
+            onClick={triggerWhatsApp}
             style={{
               color: config.colors?.title ?? '#FFFFFF',
               fontSize: `${config.typography?.title?.sizePx ?? 26}px`,
-              fontWeight: config.typography?.title?.weight ?? 700
+              fontWeight: config.typography?.title?.weight ?? 700,
+              cursor: 'pointer'
             }}
           >
             {titleLines.map((line, idx) => (
@@ -107,15 +118,17 @@ export default function Landing({ slug, config }: Props) {
           </p>
 
           {normalizedCtaPosition === 'between_title_and_info' ? (
-            <WhatsAppButton slug={slug} config={config} />
+            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
           ) : null}
 
           <p
             className="subtitle"
+            onClick={triggerWhatsApp}
             style={{
               color: config.colors?.subtitle ?? '#FFFFFF',
               fontSize: `${config.typography?.subtitle?.sizePx ?? 16}px`,
-              fontWeight: config.typography?.subtitle?.weight ?? 400
+              fontWeight: config.typography?.subtitle?.weight ?? 400,
+              cursor: 'pointer'
             }}
           >
             {subtitleLines.map((line, idx) => (
@@ -127,7 +140,7 @@ export default function Landing({ slug, config }: Props) {
           </p>
 
           {normalizedCtaPosition === 'between_info_and_badge' ? (
-            <WhatsAppButton slug={slug} config={config} />
+            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
           ) : null}
 
           {badgeText ? (
@@ -136,14 +149,18 @@ export default function Landing({ slug, config }: Props) {
               style={{
                 color: config.colors?.badge ?? '#FFD700',
                 fontSize: `${config.typography?.badge?.sizePx ?? 16}px`,
-                fontWeight: config.typography?.badge?.weight ?? 700
+                fontWeight: config.typography?.badge?.weight ?? 700,
+                cursor: 'pointer'
               }}
+              onClick={triggerWhatsApp}
             >
               -{badgeText}-
             </p>
           ) : null}
 
-          {normalizedCtaPosition === 'bottom' ? <WhatsAppButton slug={slug} config={config} /> : null}
+          {normalizedCtaPosition === 'bottom' ? (
+            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
+          ) : null}
         </div>
       </section>
     </main>

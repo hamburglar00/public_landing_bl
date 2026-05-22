@@ -37,6 +37,11 @@ export default function Template2View({ slug, config }: Props) {
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isSocialProofEnabled = config.socialProof?.enabled !== false;
   const [socialProofIndex, setSocialProofIndex] = useState(0);
+  const sharedTriggerEvent = `lp:cta-trigger:${slug}`;
+  const triggerWhatsApp = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event(sharedTriggerEvent));
+  };
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -68,6 +73,8 @@ export default function Template2View({ slug, config }: Props) {
                 className="frame__logo"
                 decoding="async"
                 fetchPriority="high"
+                onClick={triggerWhatsApp}
+                style={{ cursor: 'pointer' }}
               />
             ) : null}
 
@@ -78,8 +85,10 @@ export default function Template2View({ slug, config }: Props) {
                   style={{
                     color: config.colors?.badge ?? '#FFD700',
                     fontSize: `${config.typography?.badge?.sizePx ?? 16}px`,
-                    fontWeight: config.typography?.badge?.weight ?? 700
+                    fontWeight: config.typography?.badge?.weight ?? 700,
+                    cursor: 'pointer'
                   }}
+                  onClick={triggerWhatsApp}
                 >
                   {badgeText}
                 </p>
@@ -89,8 +98,10 @@ export default function Template2View({ slug, config }: Props) {
                 style={{
                   color: config.colors?.title ?? '#FFFFFF',
                   fontSize: `${config.typography?.title?.sizePx ?? 26}px`,
-                  fontWeight: config.typography?.title?.weight ?? 700
+                  fontWeight: config.typography?.title?.weight ?? 700,
+                  cursor: 'pointer'
                 }}
+                onClick={triggerWhatsApp}
               >
                 {titleLines.map((line, idx) => (
                   <span key={`${slug}-t2-title-${idx}`}>
@@ -102,22 +113,27 @@ export default function Template2View({ slug, config }: Props) {
             </div>
           </div>
 
-          <WhatsAppButton slug={slug} config={config} templateVariant="template2" />
+          <WhatsAppButton
+            slug={slug}
+            config={config}
+            templateVariant="template2"
+            externalTriggerEvent={sharedTriggerEvent}
+          />
 
           {isSocialProofEnabled ? (
-            <section className="social-proof" aria-label="Prueba social">
+            <section className="social-proof" aria-label="Prueba social" onClick={triggerWhatsApp} style={{ cursor: 'pointer' }}>
               <p key={`quote-${socialProofIndex}`} className="social-proof__quote">
                 "{activeSocialProof.quote}"
               </p>
               <p className="social-proof__meta">
                 {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
-                <span className="social-proof__stars">{'\u2605'.repeat(5)}</span>
+                <span className="social-proof__stars">{"\u2605".repeat(5)}</span>
               </p>
               <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
             </section>
           ) : null}
 
-          <div className="features">
+          <div className="features" onClick={triggerWhatsApp} style={{ cursor: 'pointer' }}>
             {subtitleLines.map((line, idx) => (
               <p
                 key={`${slug}-t2-sub-${idx}`}
