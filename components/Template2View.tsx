@@ -14,16 +14,16 @@ type Props = {
 const SOCIAL_PROOF_INTERVAL_MS = 5000;
 
 const SOCIAL_PROOF_ITEMS = [
-  { quote: 'Muy buena atencion. Me cargaron al instante y sin vueltas.', name: 'Nico R.' },
-  { quote: 'Pague y en minutos ya estaba jugando. Super confiables.', name: 'Juan P.' },
-  { quote: 'Siempre responden rapido, excelente servicio las 24hs.', name: 'Mica F.' },
-  { quote: 'Recargue y me acreditaron rapido. Cero drama.', name: 'Seba L.' },
-  { quote: 'Me ayudaron en todo, ideal si recien arrancas.', name: 'Romi D.' },
-  { quote: 'Atencion impecable. Responden al toque por WhatsApp.', name: 'Lau T.' },
-  { quote: 'Confiables de verdad, ya cobre varias veces.', name: 'Dario C.' },
-  { quote: 'Todo claro y sin vueltas. Recomiendo.', name: 'Cami V.' },
-  { quote: 'Excelente servicio, cargue de noche y fue instantaneo.', name: 'Pablo M.' },
-  { quote: 'Buenisimos bonos y muy buena onda para atender.', name: 'Gise A.' }
+  { quote: 'Muy buena atencion. Me respondieron rapido y sin vueltas 🙌', name: 'Nico R.' },
+  { quote: 'Excelente servicio, todo claro desde el primer mensaje ✅', name: 'Juan P.' },
+  { quote: 'Siempre responden rapido y con muy buena predisposicion 💬', name: 'Mica F.' },
+  { quote: 'Atencion super amable. Me resolvieron todo en minutos ⚡', name: 'Seba L.' },
+  { quote: 'Me ayudaron en todo el proceso, muy claros y confiables 🤝', name: 'Romi D.' },
+  { quote: 'Atencion impecable. Responden al toque por WhatsApp 📲', name: 'Lau T.' },
+  { quote: 'Servicio muy confiable, siempre cumplen con lo que dicen ⭐', name: 'Dario C.' },
+  { quote: 'Todo simple, rapido y bien explicado. Recomiendo 🙏', name: 'Cami V.' },
+  { quote: 'Muy buena experiencia. La atencion fue rapida y cordial 😊', name: 'Pablo M.' },
+  { quote: 'Excelente trato, buena onda y respuesta inmediata 🔥', name: 'Gise A.' }
 ];
 
 export default function Template2View({ slug, config }: Props) {
