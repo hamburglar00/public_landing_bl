@@ -1,107 +1,191 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { enqueueTrackEvent } from '@/lib/tracking/queue';
+import { deliverToUpstream } from '@/lib/tracking/upstream';
 
-const MAX_UPSTREAM_ATTEMPTS = 3;
-const RETRY_DELAYS_MS = [0, 250, 700];
+function parseAllowedHosts() {
+  return (process.env.TRACK_ALLOWED_HOSTS || '')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean);
+}
 
-async function sleep(ms: number) {
-  if (ms <= 0) return;
-  await new Promise((resolve) => setTimeout(resolve, ms));
+function cleanIpCandidate(value: string) {
+  let text = value.trim();
+  if (!text || text.toLowerCase() === 'unknown' || text.startsWith('_')) return '';
+
+  const forwardedMatch = text.match(/^for=(.+)$/i);
+  if (forwardedMatch) {
+    text = forwardedMatch[1].trim();
+  }
+
+  text = text.replace(/^"|"$/g, '');
+
+  if (text.startsWith('[')) {
+    const bracketEnd = text.indexOf(']');
+    if (bracketEnd > 0) {
+      text = text.slice(1, bracketEnd);
+    }
+  } else {
+    const ipv4WithPort = text.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+    if (ipv4WithPort) {
+      text = ipv4WithPort[1];
+    }
+  }
+
+  const ipv4Mapped = text.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i);
+  if (ipv4Mapped) {
+    text = ipv4Mapped[1];
+  }
+
+  return text.trim();
+}
+
+function getIpVersion(ip: string) {
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) return 'ipv4';
+  if (ip.includes(':')) return 'ipv6';
+  return '';
+}
+
+function collectHeaderIpCandidates(req: NextRequest) {
+  const candidates: Array<{ ip: string; source: string }> = [];
+  const append = (source: string, raw: string | null) => {
+    if (!raw) return;
+    for (const part of raw.split(',')) {
+      const ip = cleanIpCandidate(part);
+      if (ip && getIpVersion(ip)) {
+        candidates.push({ ip, source });
+      }
+    }
+  };
+
+  append('x-forwarded-for', req.headers.get('x-forwarded-for'));
+  append('x-real-ip', req.headers.get('x-real-ip'));
+  append('true-client-ip', req.headers.get('true-client-ip'));
+  append('cf-connecting-ip', req.headers.get('cf-connecting-ip'));
+
+  const forwarded = req.headers.get('forwarded');
+  if (forwarded) {
+    for (const entry of forwarded.split(',')) {
+      const forPart = entry
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.toLowerCase().startsWith('for='));
+      append('forwarded', forPart || null);
+    }
+  }
+
+  return candidates;
+}
+
+function getRealClientIp(req: NextRequest) {
+  const candidates = collectHeaderIpCandidates(req);
+  return candidates[0]?.ip || '';
+}
+
+function normalizePayload(req: NextRequest, payloadFromClient: Record<string, unknown>) {
+  const userAgent = req.headers.get('user-agent') || '';
+  const realClientIp = getRealClientIp(req);
+  const fallbackClientIp =
+    typeof payloadFromClient.client_ip_address === 'string'
+      ? payloadFromClient.client_ip_address.trim()
+      : '';
+  const clientIpAddress = realClientIp || fallbackClientIp;
+  const {
+    clientIP,
+    client_ip_source,
+    client_ip_version,
+    client_ipv4,
+    client_ipv6,
+    ...payload
+  } = payloadFromClient;
+  void clientIP;
+  void client_ip_source;
+  void client_ip_version;
+  void client_ipv4;
+  void client_ipv6;
+
+  return {
+    ...payload,
+    clientIP: clientIpAddress,
+    agentuser: payloadFromClient.agentuser ?? userAgent,
+    client_ip_address: clientIpAddress,
+    client_user_agent: payloadFromClient.client_user_agent ?? userAgent,
+    timestamp: payloadFromClient.timestamp ?? new Date().toISOString(),
+    event_time: payloadFromClient.event_time ?? Math.floor(Date.now() / 1000)
+  };
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const postUrl =
-      typeof body?.postUrl === 'string' ? body.postUrl.trim() : '';
+    const postUrl = typeof body?.postUrl === 'string' ? body.postUrl.trim() : '';
     const payloadFromClient =
-      body?.payload &&
-      typeof body.payload === 'object' &&
-      !Array.isArray(body.payload)
-        ? body.payload
+      body?.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+        ? (body.payload as Record<string, unknown>)
         : null;
 
     if (!postUrl || !/^https?:\/\//i.test(postUrl)) {
-      return NextResponse.json({ error: 'postUrl invÃ¡lida' }, { status: 400 });
+      return NextResponse.json({ error: 'postUrl invalida' }, { status: 400 });
     }
     if (!payloadFromClient) {
-      return NextResponse.json({ error: 'payload invÃ¡lido' }, { status: 400 });
+      return NextResponse.json({ error: 'payload invalido' }, { status: 400 });
     }
-
-    const allowedHosts = (process.env.TRACK_ALLOWED_HOSTS || '')
-      .split(',')
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean);
 
     let postHost = '';
     try {
-      postHost = new URL(postUrl).host.trim().toLowerCase();
+      postHost = new URL(postUrl).hostname.trim().toLowerCase();
     } catch {
-      return NextResponse.json({ error: 'postUrl invÃ¡lida' }, { status: 400 });
+      return NextResponse.json({ error: 'postUrl invalida' }, { status: 400 });
     }
 
-    if (allowedHosts.length > 0 && !allowedHosts.includes(postHost)) {
+    const allowedHosts = parseAllowedHosts();
+    if (allowedHosts.length === 0) {
+      return NextResponse.json(
+        { error: 'TRACK_ALLOWED_HOSTS no esta configurado' },
+        { status: 500 }
+      );
+    }
+
+    if (!allowedHosts.includes(postHost)) {
       return NextResponse.json(
         { error: `Host no permitido para tracking: ${postHost}` },
         { status: 403 }
       );
     }
 
+    const payload = normalizePayload(req, payloadFromClient);
+    const result = await deliverToUpstream(postUrl, payload);
 
-    const forwardedFor = req.headers.get('x-forwarded-for') || '';
-    const userAgent = req.headers.get('user-agent') || '';
-    const requestIp = forwardedFor.split(',')[0]?.trim() || '';
-
-    const payload = {
-      ...payloadFromClient,
-      clientIP: payloadFromClient.clientIP ?? requestIp,
-      agentuser: payloadFromClient.agentuser ?? userAgent,
-      client_ip_address:
-        payloadFromClient.client_ip_address ?? requestIp,
-      client_user_agent:
-        payloadFromClient.client_user_agent ?? userAgent,
-      timestamp:
-        payloadFromClient.timestamp ?? new Date().toISOString(),
-      event_time:
-        payloadFromClient.event_time ?? Math.floor(Date.now() / 1000)
-    };
-
-    let response: Response | null = null;
-    let text = '';
-    let lastError: unknown = null;
-
-    for (let attempt = 0; attempt < MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
-      await sleep(RETRY_DELAYS_MS[attempt] ?? 0);
-      try {
-        response = await fetch(postUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          cache: 'no-store'
-        });
-        text = await response.text();
-
-        // Corta reintentos solo cuando el constructor devuelve 200.
-        if (response.status === 200) {
-          break;
-        }
-      } catch (error) {
-        lastError = error;
-        response = null;
-        text = '';
-      }
+    if (result.ok) {
+      return NextResponse.json(result);
     }
 
-    if (!response || response.status !== 200) {
+    const queued = await enqueueTrackEvent({
+      postUrl,
+      payload,
+      reason: result.details,
+      upstreamStatus: result.upstreamStatus
+    });
+
+    if (queued) {
       return NextResponse.json(
         {
-          error: 'tracking_upstream_error',
-          details: text || (lastError instanceof Error ? lastError.message : 'upstream_no_response')
+          queued: true,
+          retry: 'scheduled',
+          ...result
         },
-        { status: 502 }
+        { status: 202 }
       );
     }
 
-    return NextResponse.json({ ok: true, details: text });
+    return NextResponse.json(
+      {
+        error: 'tracking_upstream_error',
+        queued: false,
+        ...result
+      },
+      { status: 502 }
+    );
   } catch (error) {
     return NextResponse.json(
       {
