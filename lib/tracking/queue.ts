@@ -11,6 +11,14 @@ export type TrackQueueItem = {
   attempt_count: number;
 };
 
+export type PersistedTrackEvent = {
+  ok: boolean;
+  id: string | null;
+  status: string | null;
+  isNew: boolean;
+  alreadyDelivered: boolean;
+};
+
 function getBackoffSeconds(attemptCount: number) {
   const exponent = Math.max(0, attemptCount);
   const value = RETRY_BASE_DELAY_SECONDS * 2 ** exponent;
@@ -31,6 +39,92 @@ function getEventId(payload: Record<string, unknown>) {
   return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
 }
 
+function buildQueueRow(input: {
+  postUrl: string;
+  payload: Record<string, unknown>;
+  eventId: string | null;
+  reason?: string;
+  upstreamStatus?: number | null;
+}) {
+  return {
+    post_url: input.postUrl,
+    payload: input.payload,
+    event_id: input.eventId,
+    status: 'pending',
+    attempt_count: 0,
+    next_attempt_at: new Date().toISOString(),
+    last_error: input.reason || null,
+    last_status: input.upstreamStatus ?? null
+  };
+}
+
+async function findTrackEventByEventId(eventId: string) {
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase
+    .from('tracking_queue')
+    .select('id,status')
+    .eq('event_id', eventId)
+    .maybeSingle();
+
+  return data;
+}
+
+export async function persistTrackEvent(input: {
+  postUrl: string;
+  payload: Record<string, unknown>;
+}): Promise<PersistedTrackEvent> {
+  if (!isQueueEnabled()) {
+    return { ok: false, id: null, status: null, isNew: false, alreadyDelivered: false };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const eventId = getEventId(input.payload);
+
+  if (eventId) {
+    const existing = await findTrackEventByEventId(eventId);
+    if (existing) {
+      const status = typeof existing.status === 'string' ? existing.status : null;
+      return {
+        ok: true,
+        id: typeof existing.id === 'string' ? existing.id : null,
+        status,
+        isNew: false,
+        alreadyDelivered: status === 'sent'
+      };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('tracking_queue')
+    .insert(buildQueueRow({ postUrl: input.postUrl, payload: input.payload, eventId }))
+    .select('id,status')
+    .maybeSingle();
+
+  if (!error) {
+    return {
+      ok: true,
+      id: typeof data?.id === 'string' ? data.id : null,
+      status: typeof data?.status === 'string' ? data.status : 'pending',
+      isNew: true,
+      alreadyDelivered: false
+    };
+  }
+
+  if (eventId && error.code === '23505') {
+    const existing = await findTrackEventByEventId(eventId);
+    const status = typeof existing?.status === 'string' ? existing.status : null;
+    return {
+      ok: Boolean(existing),
+      id: typeof existing?.id === 'string' ? existing.id : null,
+      status,
+      isNew: false,
+      alreadyDelivered: status === 'sent'
+    };
+  }
+
+  return { ok: false, id: null, status: null, isNew: false, alreadyDelivered: false };
+}
+
 export async function enqueueTrackEvent(input: {
   postUrl: string;
   payload: Record<string, unknown>;
@@ -42,26 +136,36 @@ export async function enqueueTrackEvent(input: {
   const supabase = getSupabaseServerClient();
   const eventId = getEventId(input.payload);
 
-  const row = {
-    post_url: input.postUrl,
-    payload: input.payload,
-    event_id: eventId,
-    status: 'pending',
-    attempt_count: 0,
-    next_attempt_at: new Date().toISOString(),
-    last_error: input.reason || null,
-    last_status: input.upstreamStatus
-  };
+  if (eventId) {
+    const existing = await findTrackEventByEventId(eventId);
+    if (existing?.status === 'sent') return true;
 
-  let query = supabase.from('tracking_queue').upsert(row, {
-    onConflict: 'event_id'
-  });
+    if (existing?.id) {
+      const { error } = await supabase
+        .from('tracking_queue')
+        .update({
+          status: 'retry',
+          next_attempt_at: new Date().toISOString(),
+          last_error: input.reason || null,
+          last_status: input.upstreamStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
 
-  if (!eventId) {
-    query = supabase.from('tracking_queue').insert(row);
+      return !error;
+    }
   }
 
-  const { error } = await query;
+  const { error } = await supabase
+    .from('tracking_queue')
+    .insert(buildQueueRow({
+      postUrl: input.postUrl,
+      payload: input.payload,
+      eventId,
+      reason: input.reason,
+      upstreamStatus: input.upstreamStatus
+    }));
+
   return !error;
 }
 
@@ -138,4 +242,3 @@ export async function scheduleTrackEventRetry(input: {
     })
     .eq('id', input.id);
 }
-

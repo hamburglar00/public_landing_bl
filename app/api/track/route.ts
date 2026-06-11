@@ -1,5 +1,9 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { enqueueTrackEvent } from '@/lib/tracking/queue';
+import {
+  enqueueTrackEvent,
+  markTrackEventDelivered,
+  persistTrackEvent
+} from '@/lib/tracking/queue';
 import { deliverToUpstream } from '@/lib/tracking/upstream';
 
 function parseAllowedHosts() {
@@ -154,18 +158,50 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = normalizePayload(req, payloadFromClient);
+    const persisted = await persistTrackEvent({ postUrl, payload });
+
+    if (persisted.alreadyDelivered) {
+      return NextResponse.json({
+        ok: true,
+        duplicate: true,
+        persisted: true,
+        status: persisted.status
+      });
+    }
+
+    if (persisted.ok && !persisted.isNew) {
+      return NextResponse.json(
+        {
+          queued: true,
+          duplicate: true,
+          persisted: true,
+          status: persisted.status
+        },
+        { status: 202 }
+      );
+    }
+
     const result = await deliverToUpstream(postUrl, payload);
 
     if (result.ok) {
-      return NextResponse.json(result);
+      if (persisted.id) {
+        await markTrackEventDelivered(persisted.id);
+      }
+
+      return NextResponse.json({
+        ...result,
+        persisted: persisted.ok
+      });
     }
 
-    const queued = await enqueueTrackEvent({
-      postUrl,
-      payload,
-      reason: result.details,
-      upstreamStatus: result.upstreamStatus
-    });
+    const queued =
+      persisted.ok ||
+      await enqueueTrackEvent({
+        postUrl,
+        payload,
+        reason: result.details,
+        upstreamStatus: result.upstreamStatus
+      });
 
     if (queued) {
       return NextResponse.json(
