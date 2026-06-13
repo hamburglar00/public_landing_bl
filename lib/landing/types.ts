@@ -58,6 +58,10 @@ export type LandingConfig = {
   socialProof?: {
     enabled?: boolean;
   };
+  interactions?: {
+    enabled?: boolean;
+    whatsappPrefillText?: string;
+  };
   layout: {
     ctaPosition:
       | 'top'

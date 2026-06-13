@@ -56,8 +56,10 @@ function generatePromoCode(tag: string) {
   return `${tag}-${random}`;
 }
 
-function buildMessage(promoCode: string) {
-  return `Hola! quiero mas informacion por favor! Mi codigo es: ${promoCode} y mi nombre es:`.trim();
+function buildMessage(promoCode: string, whatsappPrefillText?: string) {
+  const baseMessage = `Hola! quiero mas informacion por favor! Mi codigo es: ${promoCode} y mi nombre es:`.trim();
+  const extraText = String(whatsappPrefillText || '').trim();
+  return extraText ? `${baseMessage}\n\n${extraText}` : baseMessage;
 }
 
 function getOrCreateExternalId() {
@@ -400,7 +402,11 @@ export default function WhatsAppButton({
 
       const params = getQueryParamsSnapshot();
       const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
-      const message = buildMessage(promoCode);
+      const whatsappPrefillText =
+        config.interactions?.enabled && config.interactions.whatsappPrefillText
+          ? config.interactions.whatsappPrefillText
+          : '';
+      const message = buildMessage(promoCode, whatsappPrefillText);
       const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
       const sendContactPixel = config.tracking.sendContactPixel !== false;
       const identity = resolveIdentity(params);
