@@ -15,6 +15,22 @@ type Props = {
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
 type MetaParamBuilderModule = typeof import('meta-capi-param-builder-clientjs');
+type MetaTrackingParams = { fbc: string; fbp: string; clientIpAddress: string };
+type PreparedClickContext = {
+  promoCode: string;
+  message: string;
+  eventId: string;
+  sendContactPixel: boolean;
+  identity: ReturnType<typeof resolveIdentity>;
+  externalId: string;
+  emailRaw: string;
+  email: string;
+  phoneRaw: string;
+  ph: string;
+  utmCampaign: string;
+  testEventCode: string;
+  deviceType: string;
+};
 let metaParamBuilderModule: MetaParamBuilderModule | null = null;
 
 declare global {
@@ -290,11 +306,13 @@ export default function WhatsAppButton({
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
-  const metaTrackingRef = useRef<{ fbc: string; fbp: string; clientIpAddress: string }>({
+  const metaTrackingRef = useRef<MetaTrackingParams>({
     fbc: '',
     fbp: '',
     clientIpAddress: ''
   });
+  const metaTrackingPromiseRef = useRef<Promise<MetaTrackingParams> | null>(null);
+  const preparedClickRef = useRef<PreparedClickContext | null>(null);
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStartOnceRef = useRef(false);
@@ -308,6 +326,53 @@ export default function WhatsAppButton({
         .catch(() => null);
     }
     return phonePromiseRef.current;
+  }
+
+  function createPreparedClickContext(): PreparedClickContext {
+    const params = getQueryParamsSnapshot();
+    const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
+    const whatsappPrefillText =
+      config.interactions?.enabled && config.interactions.whatsappPrefillText
+        ? config.interactions.whatsappPrefillText
+        : '';
+    const identity = resolveIdentity(params);
+
+    return {
+      promoCode,
+      message: buildMessage(promoCode, whatsappPrefillText),
+      eventId: crypto?.randomUUID?.() || `${Date.now()}`,
+      sendContactPixel: config.tracking.sendContactPixel !== false,
+      identity,
+      externalId: identity.externalId,
+      emailRaw: identity.emailRaw,
+      email: identity.email,
+      phoneRaw: identity.phoneRaw,
+      ph: identity.ph,
+      utmCampaign: params.get('utm_campaign') || '',
+      testEventCode: params.get('test_event_code') || '',
+      deviceType: getDeviceType()
+    };
+  }
+
+  function ensurePreparedClickContext() {
+    if (!preparedClickRef.current) {
+      preparedClickRef.current = createPreparedClickContext();
+    }
+    return preparedClickRef.current;
+  }
+
+  function collectMetaTrackingParamsOnce() {
+    if (!metaTrackingPromiseRef.current) {
+      metaTrackingPromiseRef.current = collectMetaTrackingParams()
+        .then((value) => {
+          metaTrackingRef.current = value;
+          return value;
+        })
+        .finally(() => {
+          metaTrackingPromiseRef.current = null;
+        });
+    }
+    return metaTrackingPromiseRef.current;
   }
 
   // Prewarm del teléfono apenas carga el botón / landing
@@ -341,31 +406,49 @@ export default function WhatsAppButton({
     };
   }, [slug]);
 
-  // Inicializa _fbc/_fbp y parametros del SDK oficial de Meta en cuanto carga la landing.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const run = () => {
-      void collectMetaTrackingParams().then((value) => {
+    preparedClickRef.current = createPreparedClickContext();
+    const refreshId = window.setTimeout(() => {
+      preparedClickRef.current = createPreparedClickContext();
+    }, 300);
+
+    return () => window.clearTimeout(refreshId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    slug,
+    config.tracking.landingTag,
+    config.tracking.sendContactPixel,
+    config.interactions?.enabled,
+    config.interactions?.whatsappPrefillText
+  ]);
+
+  // Inicializa _fbc/_fbp y parametros del SDK oficial de Meta en cuanto carga la landing.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+
+    const runWithRetries = async () => {
+      const delays = [0, 300, 1200, 3000];
+      for (const delay of delays) {
+        if (cancelled) return;
+        if (delay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          if (cancelled) return;
+        }
+        const value = await collectMetaTrackingParamsOnce();
+        if (cancelled) return;
         metaTrackingRef.current = value;
-      });
+        if (value.fbp && value.fbc) return;
+      }
     };
 
-    const idleCb = (window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    }).requestIdleCallback;
-
-    if (typeof idleCb === 'function') {
-      const id = idleCb(run, { timeout: 1500 });
-      return () => {
-        const cancel = (window as Window & { cancelIdleCallback?: (idleId: number) => void }).cancelIdleCallback;
-        if (typeof cancel === 'function') cancel(id);
-      };
-    }
-
-    const timeoutId = window.setTimeout(run, 0);
-    return () => window.clearTimeout(timeoutId);
+    void runWithRetries();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Permite reutilizar toda la lógica de tracking/redirect para flujos automáticos (template 3).
@@ -400,35 +483,33 @@ export default function WhatsAppButton({
         requestAnimationFrame(() => resolve());
       });
 
-      const params = getQueryParamsSnapshot();
-      const promoCode = generatePromoCode(config.tracking.landingTag || 'LP');
-      const whatsappPrefillText =
-        config.interactions?.enabled && config.interactions.whatsappPrefillText
-          ? config.interactions.whatsappPrefillText
-          : '';
-      const message = buildMessage(promoCode, whatsappPrefillText);
-      const eventId = crypto?.randomUUID?.() || `${Date.now()}`;
-      const sendContactPixel = config.tracking.sendContactPixel !== false;
-      const identity = resolveIdentity(params);
-      const externalId = identity.externalId;
-      const emailRaw = identity.emailRaw;
-      const email = identity.email;
-      const phoneRaw = identity.phoneRaw;
-      const ph = identity.ph;
+      const prepared = ensurePreparedClickContext();
+      const {
+        promoCode,
+        message,
+        eventId,
+        sendContactPixel,
+        identity,
+        externalId,
+        emailRaw,
+        email,
+        phoneRaw,
+        ph,
+        utmCampaign,
+        testEventCode,
+        deviceType
+      } = prepared;
       let metaTracking = metaTrackingRef.current;
-      if (!metaTracking.fbp && !metaTracking.fbc) {
-        metaTracking = await collectMetaTrackingParams();
-        metaTrackingRef.current = metaTracking;
+      if (!metaTracking.fbp || !metaTracking.fbc) {
+        metaTracking = await collectMetaTrackingParamsOnce();
       } else {
-        void collectMetaTrackingParams().then((value) => {
+        void collectMetaTrackingParamsOnce().then((value) => {
           metaTrackingRef.current = value;
         });
       }
       const fbp = metaTracking.fbp;
       const fbc = metaTracking.fbc;
       const clientIpAddress = metaTracking.clientIpAddress;
-      const utmCampaign = params.get('utm_campaign') || '';
-      const testEventCode = params.get('test_event_code') || '';
       const shouldSkipContact = testEventCode
         ? false
         : wasContactRecentlySent(slug, externalId);
@@ -562,7 +643,7 @@ export default function WhatsAppButton({
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
-        device_type: getDeviceType(),
+        device_type: deviceType,
         cta_tap_to_redirect_ms: Date.now() - tapStartedAt,
         mode: config.background?.mode,
         api_meta: null
