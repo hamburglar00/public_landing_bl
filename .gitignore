@@ -5,3 +5,9 @@ node_modules
 .vercel
 next-diamond-*.log
 supabase/.temp/
+
+# El historial completo de Supabase pertenece al builder/admin.
+# Este runtime publico solo versiona migraciones propias que necesita ejecutar.
+supabase/migrations/*.sql
+!supabase/migrations/20260427180000_tracking_queue.sql
+!supabase/migrations/20260605180000_fix_tracking_retry_scheduler.sql
