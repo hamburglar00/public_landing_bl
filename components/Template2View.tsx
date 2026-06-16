@@ -1,7 +1,6 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import CtaClickDispatcher from '@/components/CtaClickDispatcher';
 import FrameBackgroundTemplate2 from '@/components/FrameBackgroundTemplate2';
+import SocialProofRotator from '@/components/SocialProofRotator';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
@@ -36,25 +35,11 @@ export default function Template2View({ slug, config }: Props) {
     (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
   const fontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isSocialProofEnabled = config.socialProof?.enabled !== false;
-  const [socialProofIndex, setSocialProofIndex] = useState(0);
   const sharedTriggerEvent = `lp:cta-trigger:${slug}`;
-  const triggerWhatsApp = () => {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new Event(sharedTriggerEvent));
-  };
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setSocialProofIndex((current) => (current + 1) % SOCIAL_PROOF_ITEMS.length);
-    }, SOCIAL_PROOF_INTERVAL_MS);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const activeSocialProof = SOCIAL_PROOF_ITEMS[socialProofIndex];
 
   return (
     <main className="lp">
+      <CtaClickDispatcher eventName={sharedTriggerEvent} />
       <section className="phone-view">
         <div
           className="artboard"
@@ -73,7 +58,7 @@ export default function Template2View({ slug, config }: Props) {
                 className="frame__logo"
                 decoding="async"
                 fetchPriority="high"
-                onClick={triggerWhatsApp}
+                data-cta-trigger-event={sharedTriggerEvent}
                 style={{ cursor: 'pointer' }}
               />
             ) : null}
@@ -88,7 +73,7 @@ export default function Template2View({ slug, config }: Props) {
                     fontWeight: config.typography?.badge?.weight ?? 700,
                     cursor: 'pointer'
                   }}
-                  onClick={triggerWhatsApp}
+                  data-cta-trigger-event={sharedTriggerEvent}
                 >
                   {badgeText}
                 </p>
@@ -101,7 +86,7 @@ export default function Template2View({ slug, config }: Props) {
                   fontWeight: config.typography?.title?.weight ?? 700,
                   cursor: 'pointer'
                 }}
-                onClick={triggerWhatsApp}
+                data-cta-trigger-event={sharedTriggerEvent}
               >
                 {titleLines.map((line, idx) => (
                   <span key={`${slug}-t2-title-${idx}`}>
@@ -121,19 +106,18 @@ export default function Template2View({ slug, config }: Props) {
           />
 
           {isSocialProofEnabled ? (
-            <section className="social-proof" aria-label="Prueba social" onClick={triggerWhatsApp} style={{ cursor: 'pointer' }}>
-              <p key={`quote-${socialProofIndex}`} className="social-proof__quote">
-                "{activeSocialProof.quote}"
-              </p>
-              <p className="social-proof__meta">
-                {activeSocialProof.name} <span aria-hidden="true">-</span>{' '}
-                <span className="social-proof__stars">{"\u2605".repeat(5)}</span>
-              </p>
-              <div key={`progress-${socialProofIndex}`} className="social-proof__progress" aria-hidden="true" />
-            </section>
+            <SocialProofRotator
+              items={SOCIAL_PROOF_ITEMS}
+              intervalMs={SOCIAL_PROOF_INTERVAL_MS}
+              triggerEvent={sharedTriggerEvent}
+            />
           ) : null}
 
-          <div className="features" onClick={triggerWhatsApp} style={{ cursor: 'pointer' }}>
+          <div
+            className="features"
+            data-cta-trigger-event={sharedTriggerEvent}
+            style={{ cursor: 'pointer' }}
+          >
             {subtitleLines.map((line, idx) => (
               <p
                 key={`${slug}-t2-sub-${idx}`}

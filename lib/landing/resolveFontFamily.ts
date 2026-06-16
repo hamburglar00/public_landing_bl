@@ -24,3 +24,23 @@ export function resolveFontFamily(token: string | undefined): string | undefined
       return token;
   }
 }
+
+export function getGoogleFontStylesheetHref(token: string | undefined): string | undefined {
+  const value = (token || 'system').toLowerCase();
+  const baseUrl = 'https://fonts.googleapis.com/css2';
+
+  switch (value) {
+    case 'roboto':
+      return `${baseUrl}?family=Roboto:wght@400;500;700&display=swap`;
+    case 'poppins':
+      return `${baseUrl}?family=Poppins:wght@400;600;700&display=swap`;
+    case 'montserrat':
+      return `${baseUrl}?family=Montserrat:wght@400;500;700&display=swap`;
+    case 'bebas':
+      return `${baseUrl}?family=Bebas+Neue&display=swap`;
+    case 'anton':
+      return `${baseUrl}?family=Anton&display=swap`;
+    default:
+      return undefined;
+  }
+}

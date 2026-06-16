@@ -1,10 +1,8 @@
-import dynamic from 'next/dynamic';
 import PixelInit from '@/components/PixelInit';
+import Template1View from '@/components/Template1View';
+import Template2View from '@/components/Template2View';
+import Template3View from '@/components/Template3View';
 import type { LandingConfig } from '@/lib/landing/types';
-
-const Template1View = dynamic(() => import('@/components/Template1View'));
-const Template2View = dynamic(() => import('@/components/Template2View'));
-const Template3View = dynamic(() => import('@/components/Template3View'));
 
 type Props = {
   slug: string;

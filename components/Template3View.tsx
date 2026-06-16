@@ -1,5 +1,3 @@
-'use client';
-
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';

@@ -116,6 +116,17 @@ function getLocalStorageValue(key: string) {
   }
 }
 
+function getCookieValue(key: string) {
+  if (typeof document === 'undefined') return '';
+  try {
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedKey}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch {
+    return '';
+  }
+}
+
 const CONTACT_DEDUP_TTL_MS = 5 * 60 * 1000;
 
 function getContactDedupKey(slug: string, externalId: string) {
@@ -279,12 +290,12 @@ async function collectMetaTrackingParams() {
   try {
     const sdk = await loadMetaParamBuilder();
     return {
-      fbc: sdk.getFbc() || '',
-      fbp: sdk.getFbp() || '',
+      fbc: sdk.getFbc() || getCookieValue('_fbc'),
+      fbp: sdk.getFbp() || getCookieValue('_fbp'),
       clientIpAddress: sdk.getClientIpAddress() || ''
     };
   } catch {
-    return { fbc: '', fbp: '', clientIpAddress: '' };
+    return { fbc: getCookieValue('_fbc'), fbp: getCookieValue('_fbp'), clientIpAddress: '' };
   }
 }
 

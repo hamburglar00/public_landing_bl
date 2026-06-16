@@ -1,5 +1,4 @@
-'use client';
-
+import CtaClickDispatcher from '@/components/CtaClickDispatcher';
 import RotatingBackground from '@/components/RotatingBackground';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
@@ -17,10 +16,6 @@ export default function Template1View({ slug, config }: Props) {
   const subtitleLines = config.content?.subtitle || [];
   const badgeText = config.content?.footerBadgeText || '';
   const sharedTriggerEvent = `lp:cta-trigger:${slug}`;
-  const triggerWhatsApp = () => {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new Event(sharedTriggerEvent));
-  };
 
   const rawCtaPosition = config.layout?.ctaPosition ?? 'between_title_and_info';
   const normalizedCtaPosition = (() => {
@@ -33,6 +28,7 @@ export default function Template1View({ slug, config }: Props) {
 
   return (
     <main className="landing-shell">
+      <CtaClickDispatcher eventName={sharedTriggerEvent} />
       <section className="container background-image">
         <RotatingBackground
           images={images}
@@ -49,7 +45,7 @@ export default function Template1View({ slug, config }: Props) {
               alt={config.name}
               decoding="async"
               fetchPriority="high"
-              onClick={triggerWhatsApp}
+              data-cta-trigger-event={sharedTriggerEvent}
               style={{ cursor: 'pointer' }}
             />
           ) : null}
@@ -60,7 +56,7 @@ export default function Template1View({ slug, config }: Props) {
 
           <p
             className="title"
-            onClick={triggerWhatsApp}
+            data-cta-trigger-event={sharedTriggerEvent}
             style={{
               color: config.colors?.title ?? '#FFFFFF',
               fontSize: `${config.typography?.title?.sizePx ?? 26}px`,
@@ -82,7 +78,7 @@ export default function Template1View({ slug, config }: Props) {
 
           <p
             className="subtitle"
-            onClick={triggerWhatsApp}
+            data-cta-trigger-event={sharedTriggerEvent}
             style={{
               color: config.colors?.subtitle ?? '#FFFFFF',
               fontSize: `${config.typography?.subtitle?.sizePx ?? 16}px`,
@@ -111,7 +107,7 @@ export default function Template1View({ slug, config }: Props) {
                 fontWeight: config.typography?.badge?.weight ?? 700,
                 cursor: 'pointer'
               }}
-              onClick={triggerWhatsApp}
+              data-cta-trigger-event={sharedTriggerEvent}
             >
               -{badgeText}-
             </p>
