@@ -96,6 +96,13 @@ select {
   padding: 32px 20px;
 }
 
+.content .title,
+.content .subtitle,
+.content .description {
+  width: 100%;
+  max-width: min(85vw, 620px);
+}
+
 .logo {
   width: 200px;
   height: 150px;
@@ -349,8 +356,11 @@ select {
   z-index: 2;
   left: 0;
   right: 0;
+  width: 85%;
+  max-width: 365px;
   bottom: 26px;
-  padding: 0 14px;
+  padding: 0;
+  margin: 0 auto;
   text-align: center;
 }
 
@@ -565,6 +575,8 @@ select {
 }
 
 .lp .features {
+  width: 85%;
+  max-width: 365px;
   margin-top: 8px;
   text-align: center;
   color: #f4f4f4;
@@ -611,7 +623,6 @@ select {
 
   .lp .frame__copy {
     bottom: 22px;
-    padding: 0 12px;
   }
 
   .lp .eyebrow {
