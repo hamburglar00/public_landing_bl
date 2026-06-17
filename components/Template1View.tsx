@@ -29,7 +29,9 @@ export default function Template1View({ slug, config }: Props) {
   return (
     <main className="landing-shell">
       <CtaClickDispatcher eventName={sharedTriggerEvent} />
-      <section className="container background-image">
+      <section
+        className={`container background-image${normalizedCtaPosition === 'bottom' ? ' template1-bottom-layout' : ''}`}
+      >
         <RotatingBackground
           images={images}
           rotateEveryHours={config.background?.rotateEveryHours}
@@ -113,10 +115,18 @@ export default function Template1View({ slug, config }: Props) {
             </p>
           ) : null}
 
-          {normalizedCtaPosition === 'bottom' ? (
-            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
-          ) : null}
         </div>
+
+        {normalizedCtaPosition === 'bottom' ? (
+          <div className="template1-bottom-cta-slot">
+            <WhatsAppButton
+              slug={slug}
+              config={config}
+              templateVariant="template1"
+              externalTriggerEvent={sharedTriggerEvent}
+            />
+          </div>
+        ) : null}
       </section>
     </main>
   );
