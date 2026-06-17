@@ -236,7 +236,7 @@ select {
 
 /* ========== Plantilla 1: CTA bottom alineado con plantilla 2 ========== */
 .container.background-image.template1-bottom-layout {
-  --cta-thumb-frame-height: 72svh;
+  --cta-thumb-frame-height: 74svh;
   align-items: flex-start;
 }
 
@@ -279,7 +279,7 @@ select {
 }
 
 .artboard {
-  --cta-thumb-frame-height: 72svh;
+  --cta-thumb-frame-height: 74svh;
   width: min(100vw, 430px);
   height: 100vh;
   height: 100svh;
@@ -581,7 +581,7 @@ select {
 @media (max-width: 390px) {
   .container.background-image.template1-bottom-layout,
   .lp .artboard {
-    --cta-thumb-frame-height: 70svh;
+    --cta-thumb-frame-height: 72svh;
   }
 
   .template1-bottom-cta-slot {
@@ -666,7 +666,7 @@ select {
 @media (min-width: 431px) {
   .container.background-image.template1-bottom-layout,
   .lp .artboard {
-    --cta-thumb-frame-height: 72vh;
+    --cta-thumb-frame-height: 74vh;
   }
 
   .lp .artboard {
@@ -681,7 +681,7 @@ select {
 @media (min-width: 768px) {
   .container.background-image.template1-bottom-layout,
   .lp .artboard {
-    --cta-thumb-frame-height: min(72vh, 820px);
+    --cta-thumb-frame-height: min(74vh, 840px);
   }
 
   .lp .artboard {
@@ -689,7 +689,7 @@ select {
   }
 
   .lp .frame {
-    max-height: 820px;
+    max-height: 840px;
   }
 
   .lp .frame__copy .title {
