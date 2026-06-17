@@ -203,20 +203,17 @@ select {
     transition: none;
   }
 
-  .lp .cta::after,
-  .template1-bottom-cta-slot .cta::after {
+  .lp .cta::after {
     animation: none !important;
     opacity: 0 !important;
   }
 
-  .lp .cta,
-  .template1-bottom-cta-slot .cta {
+  .lp .cta {
     animation: none !important;
     transition: none;
   }
 
-  .lp .cta:hover,
-  .template1-bottom-cta-slot .cta:hover {
+  .lp .cta:hover {
     transform: none;
   }
 
@@ -263,6 +260,10 @@ select {
   display: flex;
   justify-content: center;
   transform: translateX(-50%);
+}
+
+.template1-bottom-cta-slot .whatsapp-button {
+  margin-top: 10px;
 }
 
 /* ========== Plantilla 2 (layout.template === 2) ========== */
@@ -383,8 +384,7 @@ select {
   text-shadow: 0 3px 10px rgba(0, 0, 0, 0.95);
 }
 
-.lp .cta,
-.template1-bottom-cta-slot .cta {
+.lp .cta {
   position: relative;
   width: 80%;
   min-height: 45px;
@@ -409,8 +409,7 @@ select {
   will-change: transform;
 }
 
-.lp .cta::after,
-.template1-bottom-cta-slot .cta::after {
+.lp .cta::after {
   content: '';
   position: absolute;
   inset: -4px;
@@ -424,30 +423,26 @@ select {
   will-change: transform, opacity;
 }
 
-.lp .cta > *,
-.template1-bottom-cta-slot .cta > * {
+.lp .cta > * {
   position: relative;
   z-index: 1;
 }
 
-.lp .cta:hover,
-.template1-bottom-cta-slot .cta:hover {
+.lp .cta:hover {
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 14px 28px rgba(0, 0, 0, 0.28);
 }
 
-.lp .cta:active,
-.template1-bottom-cta-slot .cta:active {
+.lp .cta:active {
   transform: scale(0.97);
   box-shadow:
     inset 0 2px 8px rgba(0, 0, 0, 0.2),
     0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.lp .cta:disabled,
-.template1-bottom-cta-slot .cta:disabled {
+.lp .cta:disabled {
   cursor: not-allowed;
   opacity: 0.75;
 }
@@ -484,8 +479,7 @@ select {
   }
 }
 
-.lp .cta__fill,
-.template1-bottom-cta-slot .cta__fill {
+.lp .cta__fill {
   flex: 1 1 auto;
   min-width: 0;
   color: #fff;
@@ -498,8 +492,7 @@ select {
   word-break: break-word;
 }
 
-.lp .cta__icon,
-.template1-bottom-cta-slot .cta__icon {
+.lp .cta__icon {
   width: 24px;
   height: 24px;
   object-fit: contain;
@@ -633,8 +626,7 @@ select {
     font-size: 20px;
   }
 
-  .lp .cta,
-  .template1-bottom-cta-slot .cta {
+  .lp .cta {
     width: 80%;
     min-height: 38px;
     border-radius: 14px;
@@ -642,14 +634,12 @@ select {
     gap: 8px;
   }
 
-  .lp .cta__fill,
-  .template1-bottom-cta-slot .cta__fill {
+  .lp .cta__fill {
     font-size: inherit;
     font-weight: inherit;
   }
 
-  .lp .cta__icon,
-  .template1-bottom-cta-slot .cta__icon {
+  .lp .cta__icon {
     width: 20px;
     height: 20px;
   }

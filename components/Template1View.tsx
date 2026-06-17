@@ -122,7 +122,6 @@ export default function Template1View({ slug, config }: Props) {
             <WhatsAppButton
               slug={slug}
               config={config}
-              templateVariant="template1"
               externalTriggerEvent={sharedTriggerEvent}
             />
           </div>
