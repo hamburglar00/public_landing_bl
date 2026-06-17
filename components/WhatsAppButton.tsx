@@ -78,6 +78,30 @@ function buildMessage(promoCode: string, whatsappPrefillText?: string) {
   return extraText ? `${baseMessage}\n\n${extraText}` : baseMessage;
 }
 
+function WhatsAppIcon({ className }: { className: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M7.22 25.64 4 27.13l1.42-3.36a12.08 12.08 0 1 1 4.26 3.82l-2.46-1.95Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="3.3"
+      />
+      <path
+        d="M11.28 8.15c-.48.16-1.5.92-1.78 1.9-.62 2.22.92 5.72 4.08 8.88 3.16 3.16 6.66 4.7 8.88 4.08.98-.28 1.74-1.3 1.9-1.78.14-.42.03-.86-.32-1.08l-3.48-2.08c-.45-.27-1.03-.18-1.38.2l-1.18 1.28c-.3.32-.78.4-1.16.2a12.2 12.2 0 0 1-3.04-2.28 12.2 12.2 0 0 1-2.28-3.04c-.2-.38-.12-.86.2-1.16L13 12.09c.38-.35.47-.93.2-1.38l-2.08-3.48c-.22-.35-.66-.46-1.08-.32Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function getOrCreateExternalId() {
   if (typeof window === 'undefined') return '';
 
@@ -735,12 +759,7 @@ export default function WhatsAppButton({
         <span className="cta__fill">
           {isDisabled ? 'Sin número disponible' : isLoading ? 'Abriendo...' : ctaText}
         </span>
-        <img
-          src="/imagenes/whatsapp.png"
-          alt="WhatsApp"
-          className="cta__icon"
-          aria-hidden="true"
-        />
+        <WhatsAppIcon className="cta__icon" />
       </a>
     );
   }
@@ -761,12 +780,7 @@ export default function WhatsAppButton({
       aria-busy={isLoading}
     >
       <span>{isDisabled ? 'Sin número disponible' : isLoading ? 'Abriendo...' : ctaText}</span>
-      <img
-        src="/imagenes/whatsapp.png"
-        alt=""
-        className="whatsapp-icon"
-        aria-hidden="true"
-      />
+      <WhatsAppIcon className="whatsapp-icon" />
     </button>
   );
 }
