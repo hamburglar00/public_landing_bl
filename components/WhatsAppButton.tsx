@@ -731,6 +731,21 @@ export default function WhatsAppButton({
 
   if (hideButton) return null;
 
+  if (templateVariant === 'template3') {
+    return (
+      <button
+        type="button"
+        className="template3__retry"
+        onClick={() => void handleClick()}
+        disabled={isLoading || isDisabled}
+        aria-label="Reintentar redirección a WhatsApp"
+        aria-busy={isLoading}
+      >
+        {isDisabled ? 'reintenta en un momento' : isLoading ? 'conectando...' : 'haz clic aquí.'}
+      </button>
+    );
+  }
+
   if (templateVariant === 'template1' || templateVariant === 'template2') {
     return (
       <a
