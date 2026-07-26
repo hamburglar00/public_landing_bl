@@ -4,8 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
-  title: 'Landing PBAdmin',
-  description: 'Landing dinámica por slug'
+  title: 'Landing PBAdmin'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
