@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig } from '@/lib/landing/types';
+import {
+  buildTrackingStorageKey,
+  buildTrackingStorageNamespace
+} from '@/lib/tracking/clientStorage';
 
 type Props = {
   slug: string;
@@ -24,9 +28,7 @@ type PreparedClickContext = {
   identity: ReturnType<typeof resolveIdentity>;
   externalId: string;
   emailRaw: string;
-  email: string;
   phoneRaw: string;
-  ph: string;
   utmCampaign: string;
   testEventCode: string;
   deviceType: string;
@@ -97,14 +99,15 @@ function WhatsAppIcon({ className }: { className: string }) {
   );
 }
 
-function getOrCreateExternalId() {
+function getOrCreateExternalId(storageNamespace: string) {
   if (typeof window === 'undefined') return '';
 
-  const existing = window.localStorage.getItem('external_id');
+  const storageKey = buildTrackingStorageKey(storageNamespace, 'external_id');
+  const existing = window.localStorage.getItem(storageKey);
   if (existing) return existing;
 
   const created = crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-  window.localStorage.setItem('external_id', created);
+  window.localStorage.setItem(storageKey, created);
   return created;
 }
 
@@ -126,10 +129,12 @@ function readMeta() {
   return window.__META || {};
 }
 
-function getLocalStorageValue(key: string) {
+function getLocalStorageValue(storageNamespace: string, key: string) {
   if (typeof window === 'undefined') return '';
   try {
-    return window.localStorage.getItem(key) || '';
+    return window.localStorage.getItem(
+      buildTrackingStorageKey(storageNamespace, key)
+    ) || '';
   } catch {
     return '';
   }
@@ -148,16 +153,27 @@ function getCookieValue(key: string) {
 
 const CONTACT_DEDUP_TTL_MS = 5 * 60 * 1000;
 
-function getContactDedupKey(slug: string, externalId: string) {
-  return `contact_sent:${slug}:${externalId}`;
+function getContactDedupKey(
+  storageNamespace: string,
+  slug: string,
+  externalId: string
+) {
+  return buildTrackingStorageKey(
+    storageNamespace,
+    `contact_sent:${slug}:${externalId}`
+  );
 }
 
-function wasContactRecentlySent(slug: string, externalId: string) {
+function wasContactRecentlySent(
+  storageNamespace: string,
+  slug: string,
+  externalId: string
+) {
   if (typeof window === 'undefined') return false;
   if (!slug || !externalId) return false;
 
   try {
-    const key = getContactDedupKey(slug, externalId);
+    const key = getContactDedupKey(storageNamespace, slug, externalId);
     const raw = window.localStorage.getItem(key);
     if (!raw) return false;
 
@@ -179,51 +195,58 @@ function wasContactRecentlySent(slug: string, externalId: string) {
   }
 }
 
-function markContactSent(slug: string, externalId: string) {
+function markContactSent(
+  storageNamespace: string,
+  slug: string,
+  externalId: string
+) {
   if (typeof window === 'undefined') return;
   if (!slug || !externalId) return;
 
   try {
-    const key = getContactDedupKey(slug, externalId);
+    const key = getContactDedupKey(storageNamespace, slug, externalId);
     window.localStorage.setItem(key, String(Date.now()));
   } catch {
     // Ignorar errores de storage
   }
 }
 
-function resolveIdentity(params: URLSearchParams = getQueryParamsSnapshot()) {
+function resolveIdentity(
+  storageNamespace: string,
+  params: URLSearchParams = getQueryParamsSnapshot()
+) {
   const meta = readMeta();
   const getParam = (name: string) => params.get(name) || '';
 
   const emailResolved = firstNonEmpty(
     getParam('email'),
     getParam('em'),
-    getLocalStorageValue('em'),
+    getLocalStorageValue(storageNamespace, 'em'),
     meta.userEmail || ''
   );
 
   const phoneResolved = firstNonEmpty(
     getParam('phone'),
     getParam('ph'),
-    getLocalStorageValue('ph'),
+    getLocalStorageValue(storageNamespace, 'ph'),
     meta.userPhone || ''
   );
 
   const cityResolved = firstNonEmpty(
     getParam('ct'),
-    getLocalStorageValue('ct')
+    getLocalStorageValue(storageNamespace, 'ct')
   );
   const stateResolved = firstNonEmpty(
     getParam('st'),
-    getLocalStorageValue('st')
+    getLocalStorageValue(storageNamespace, 'st')
   );
   const zipResolved = firstNonEmpty(
     getParam('zip'),
-    getLocalStorageValue('zip')
+    getLocalStorageValue(storageNamespace, 'zip')
   );
   const countryResolved = firstNonEmpty(
     getParam('country'),
-    getLocalStorageValue('country')
+    getLocalStorageValue(storageNamespace, 'country')
   );
 
   const fnResolved = firstNonEmpty(getParam('fn'), meta.userFn || '');
@@ -231,10 +254,11 @@ function resolveIdentity(params: URLSearchParams = getQueryParamsSnapshot()) {
 
   const externalIdResolved = firstNonEmpty(
     meta.externalId || '',
-    getLocalStorageValue('external_id')
+    getLocalStorageValue(storageNamespace, 'external_id')
   );
 
-  const externalId = externalIdResolved || getOrCreateExternalId();
+  const externalId =
+    externalIdResolved || getOrCreateExternalId(storageNamespace);
   const email = emailResolved ? normalizeEmail(emailResolved) : '';
   const ph = phoneResolved ? normalizePhone(phoneResolved) : '';
 
@@ -251,6 +275,54 @@ function resolveIdentity(params: URLSearchParams = getQueryParamsSnapshot()) {
     ln: lnResolved,
     externalId
   };
+}
+
+function getSafeEventSourceUrl() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return `${window.location.origin}${window.location.pathname}`;
+  } catch {
+    return '';
+  }
+}
+
+function sanitizeSensitiveQueryParams() {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    const sensitiveKeys = [
+      'email',
+      'em',
+      'phone',
+      'ph',
+      'fn',
+      'ln',
+      'external_id',
+      'eid',
+      'ct',
+      'st',
+      'zip',
+      'country'
+    ];
+    let changed = false;
+
+    for (const key of sensitiveKeys) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${url.pathname}${url.search}${url.hash}`
+      );
+    }
+  } catch {
+    // La limpieza de la URL nunca debe afectar la experiencia.
+  }
 }
 
 async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
@@ -333,6 +405,10 @@ export default function WhatsAppButton({
   hideButton = false,
   externalTriggerEvent
 }: Props) {
+  const storageNamespace = buildTrackingStorageNamespace(
+    config.tracking.pixelId,
+    slug
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
@@ -365,7 +441,10 @@ export default function WhatsAppButton({
       config.interactions?.enabled && config.interactions.whatsappPrefillText
         ? config.interactions.whatsappPrefillText
         : '';
-    const identity = resolveIdentity(params);
+    const identity = resolveIdentity(storageNamespace, params);
+    const utmCampaign = params.get('utm_campaign') || '';
+    const testEventCode = params.get('test_event_code') || '';
+    sanitizeSensitiveQueryParams();
 
     return {
       promoCode,
@@ -375,11 +454,9 @@ export default function WhatsAppButton({
       identity,
       externalId: identity.externalId,
       emailRaw: identity.emailRaw,
-      email: identity.email,
       phoneRaw: identity.phoneRaw,
-      ph: identity.ph,
-      utmCampaign: params.get('utm_campaign') || '',
-      testEventCode: params.get('test_event_code') || '',
+      utmCampaign,
+      testEventCode,
       deviceType: getDeviceType()
     };
   }
@@ -448,6 +525,7 @@ export default function WhatsAppButton({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     slug,
+    config.tracking.pixelId,
     config.tracking.landingTag,
     config.tracking.sendContactPixel,
     config.interactions?.enabled,
@@ -522,9 +600,7 @@ export default function WhatsAppButton({
         identity,
         externalId,
         emailRaw,
-        email,
         phoneRaw,
-        ph,
         utmCampaign,
         testEventCode,
         deviceType
@@ -542,7 +618,7 @@ export default function WhatsAppButton({
       const clientIpAddress = metaTracking.clientIpAddress;
       const shouldSkipContact = testEventCode
         ? false
-        : wasContactRecentlySent(slug, externalId);
+        : wasContactRecentlySent(storageNamespace, slug, externalId);
 
       // Usa el número pre-cargado; si viene lento, hace un reintento corto.
       let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
@@ -576,34 +652,10 @@ export default function WhatsAppButton({
           typeof window !== 'undefined' &&
           window.fbq
         ) {
-          const contactData: Record<string, unknown> = {
-            source: 'main_button',
-            external_id: externalId
-          };
-
-          if (email) {
-            contactData.em = email;
-          }
-          if (ph) {
-            contactData.ph = ph;
-          }
-          if (identity.fn) {
-            contactData.fn = identity.fn;
-          }
-          if (identity.ln) {
-            contactData.ln = identity.ln;
-          }
-          if (fbp) {
-            contactData.fbp = fbp;
-          }
-          if (fbc) {
-            contactData.fbc = fbc;
-          }
-
           window.fbq(
             'track',
             'Contact',
-            contactData,
+            { source: 'main_button' },
             { eventID: eventId }
           );
         }
@@ -651,7 +703,7 @@ export default function WhatsAppButton({
         sendContactPixel,
         event_id: eventId,
         external_id: externalId,
-        event_source_url: window.location.href,
+        event_source_url: getSafeEventSourceUrl(),
         email: emailRaw,
         phone: phoneRaw,
         fn: identity.fn || undefined,
@@ -694,7 +746,7 @@ export default function WhatsAppButton({
       }
 
       if (!shouldSkipContact) {
-        markContactSent(slug, externalId);
+        markContactSent(storageNamespace, slug, externalId);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 180));

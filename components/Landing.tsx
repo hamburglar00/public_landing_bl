@@ -1,4 +1,5 @@
 import PixelInit from '@/components/PixelInit';
+import PrivacyFooter from '@/components/PrivacyFooter';
 import Template1View from '@/components/Template1View';
 import Template2View from '@/components/Template2View';
 import Template3View from '@/components/Template3View';
@@ -15,7 +16,7 @@ export default function Landing({ slug, config }: Props) {
 
   const pixelBlock = config.tracking.pixelId ? (
     <>
-      <PixelInit pixelId={config.tracking.pixelId} />
+      <PixelInit pixelId={config.tracking.pixelId} slug={slug} />
       <noscript>
         <img
           height="1"
@@ -33,6 +34,7 @@ export default function Landing({ slug, config }: Props) {
       <>
         {pixelBlock}
         <Template3View slug={slug} config={config} />
+        <PrivacyFooter config={config} />
       </>
     );
   }
@@ -42,6 +44,7 @@ export default function Landing({ slug, config }: Props) {
       <>
         {pixelBlock}
         <Template2View slug={slug} config={config} />
+        <PrivacyFooter config={config} />
       </>
     );
   }
@@ -50,6 +53,7 @@ export default function Landing({ slug, config }: Props) {
     <>
       {pixelBlock}
       <Template1View slug={slug} config={config} />
+      <PrivacyFooter config={config} />
     </>
   );
 }
