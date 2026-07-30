@@ -7,6 +7,10 @@ import {
   buildTrackingStorageKey,
   buildTrackingStorageNamespace
 } from '@/lib/tracking/clientStorage';
+import {
+  collectMetaClientIpProof,
+  getCachedMetaClientIpProof
+} from '@/lib/tracking/metaIpCollector';
 
 type Props = {
   slug: string;
@@ -19,7 +23,13 @@ type Props = {
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
 type MetaParamBuilderModule = typeof import('meta-capi-param-builder-clientjs');
-type MetaTrackingParams = { fbc: string; fbp: string; clientIpAddress: string };
+type MetaTrackingParams = {
+  fbc: string;
+  fbp: string;
+  clientIpAddress: string;
+  clientIpIssuedAt: number | null;
+  clientIpProof: string;
+};
 type PreparedClickContext = {
   promoCode: string;
   message: string;
@@ -363,12 +373,25 @@ async function sendTrackBestEffort(body: string) {
 
 async function collectMetaTrackingParams() {
   if (typeof window === 'undefined') {
-    return { fbc: '', fbp: '', clientIpAddress: '' };
+    return {
+      fbc: '',
+      fbp: '',
+      clientIpAddress: '',
+      clientIpIssuedAt: null,
+      clientIpProof: ''
+    };
   }
 
+  const cachedIpProof = getCachedMetaClientIpProof();
   try {
     const sdk = await loadMetaParamBuilder();
-    await waitWithTimeout(sdk.processAndCollectAllParams(window.location.href), 400);
+    await waitWithTimeout(
+      sdk.processAndCollectAllParams(
+        window.location.href,
+        async () => cachedIpProof.clientIpAddress
+      ),
+      400
+    );
   } catch {
     try {
       const sdk = await loadMetaParamBuilder();
@@ -380,13 +403,21 @@ async function collectMetaTrackingParams() {
 
   try {
     const sdk = await loadMetaParamBuilder();
+    const latestIpProof = getCachedMetaClientIpProof();
     return {
       fbc: sdk.getFbc() || getCookieValue('_fbc'),
       fbp: sdk.getFbp() || getCookieValue('_fbp'),
-      clientIpAddress: sdk.getClientIpAddress() || ''
+      clientIpAddress: latestIpProof.clientIpAddress || sdk.getClientIpAddress() || '',
+      clientIpIssuedAt: latestIpProof.clientIpIssuedAt,
+      clientIpProof: latestIpProof.clientIpProof
     };
   } catch {
-    return { fbc: getCookieValue('_fbc'), fbp: getCookieValue('_fbp'), clientIpAddress: '' };
+    const latestIpProof = getCachedMetaClientIpProof();
+    return {
+      fbc: getCookieValue('_fbc'),
+      fbp: getCookieValue('_fbp'),
+      ...latestIpProof
+    };
   }
 }
 
@@ -415,7 +446,9 @@ export default function WhatsAppButton({
   const metaTrackingRef = useRef<MetaTrackingParams>({
     fbc: '',
     fbp: '',
-    clientIpAddress: ''
+    clientIpAddress: '',
+    clientIpIssuedAt: null,
+    clientIpProof: ''
   });
   const metaTrackingPromiseRef = useRef<Promise<MetaTrackingParams> | null>(null);
   const preparedClickRef = useRef<PreparedClickContext | null>(null);
@@ -536,6 +569,44 @@ export default function WhatsAppButton({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | null = null;
+    let fallbackTimerId: number | null = null;
+
+    const collectIpInBackground = () => {
+      void collectMetaClientIpProof().then(async (ipProof) => {
+        if (cancelled || !ipProof.clientIpAddress) return;
+        try {
+          const sdk = await loadMetaParamBuilder();
+          await sdk.processAndCollectAllParams(
+            window.location.href,
+            async () => ipProof.clientIpAddress
+          );
+          if (cancelled) return;
+          metaTrackingRef.current = {
+            fbc: sdk.getFbc() || metaTrackingRef.current.fbc || getCookieValue('_fbc'),
+            fbp: sdk.getFbp() || metaTrackingRef.current.fbp || getCookieValue('_fbp'),
+            ...ipProof
+          };
+        } catch {
+          if (!cancelled) {
+            metaTrackingRef.current = {
+              ...metaTrackingRef.current,
+              ...ipProof
+            };
+          }
+        }
+      });
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      idleId = idleWindow.requestIdleCallback(collectIpInBackground, { timeout: 800 });
+    } else {
+      fallbackTimerId = window.setTimeout(collectIpInBackground, 0);
+    }
 
     const runWithRetries = async () => {
       const delays = [0, 300, 1200, 3000];
@@ -555,6 +626,8 @@ export default function WhatsAppButton({
     void runWithRetries();
     return () => {
       cancelled = true;
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId);
+      if (fallbackTimerId !== null) window.clearTimeout(fallbackTimerId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -616,6 +689,8 @@ export default function WhatsAppButton({
       const fbp = metaTracking.fbp;
       const fbc = metaTracking.fbc;
       const clientIpAddress = metaTracking.clientIpAddress;
+      const clientIpIssuedAt = metaTracking.clientIpIssuedAt;
+      const clientIpProof = metaTracking.clientIpProof;
       const shouldSkipContact = testEventCode
         ? false
         : wasContactRecentlySent(storageNamespace, slug, externalId);
@@ -717,6 +792,8 @@ export default function WhatsAppButton({
         fbp,
         fbc,
         client_ip_address: clientIpAddress || undefined,
+        client_ip_issued_at: clientIpIssuedAt || undefined,
+        client_ip_proof: clientIpProof || undefined,
         client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
         telefono_asignado: phone,
         promo_code: promoCode,
