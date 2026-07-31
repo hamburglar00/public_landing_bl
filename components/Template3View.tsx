@@ -1,6 +1,5 @@
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
-import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
 
 type Props = {
   slug: string;
@@ -8,15 +7,8 @@ type Props = {
 };
 
 export default function Template3View({ slug, config }: Props) {
-  const fontFamily = resolveFontFamily(config.typography?.fontFamily);
-
   return (
-    <main
-      className="template3"
-      style={{
-        fontFamily
-      }}
-    >
+    <main className="template3">
       <section className="template3__card" aria-live="polite">
         <svg
           className="template3__whatsapp"

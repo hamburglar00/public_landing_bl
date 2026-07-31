@@ -8,6 +8,12 @@ import {
   buildTrackingStorageNamespace
 } from '@/lib/tracking/clientStorage';
 import {
+  firstNonEmpty,
+  getOrCreateExternalId,
+  normalizeEmail,
+  normalizeLandingPhone
+} from '@/lib/tracking/identity';
+import {
   collectMetaClientIpProof,
   getCachedMetaClientIpProof
 } from '@/lib/tracking/metaIpCollector';
@@ -73,12 +79,6 @@ function getDeviceType() {
   return 'desktop';
 }
 
-function normalizePhone(raw: string) {
-  let value = String(raw || '').replace(/\D+/g, '');
-  if (value.length === 10) value = `54${value}`;
-  return value;
-}
-
 function generatePromoCode(tag: string) {
   const random = Math.random().toString(16).slice(2, 14);
   return `${tag}-${random}`;
@@ -107,31 +107,6 @@ function WhatsAppIcon({ className }: { className: string }) {
       </g>
     </svg>
   );
-}
-
-function getOrCreateExternalId(storageNamespace: string) {
-  if (typeof window === 'undefined') return '';
-
-  const storageKey = buildTrackingStorageKey(storageNamespace, 'external_id');
-  const existing = window.localStorage.getItem(storageKey);
-  if (existing) return existing;
-
-  const created = crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-  window.localStorage.setItem(storageKey, created);
-  return created;
-}
-
-function firstNonEmpty(...values: Array<string | undefined>) {
-  for (const value of values) {
-    if (value == null) continue;
-    const text = String(value).trim();
-    if (text) return text;
-  }
-  return '';
-}
-
-function normalizeEmail(raw: string) {
-  return raw.trim().toLowerCase();
 }
 
 function readMeta() {
@@ -223,6 +198,7 @@ function markContactSent(
 
 function resolveIdentity(
   storageNamespace: string,
+  phoneCountryCode: string,
   params: URLSearchParams = getQueryParamsSnapshot()
 ) {
   const meta = readMeta();
@@ -270,7 +246,9 @@ function resolveIdentity(
   const externalId =
     externalIdResolved || getOrCreateExternalId(storageNamespace);
   const email = emailResolved ? normalizeEmail(emailResolved) : '';
-  const ph = phoneResolved ? normalizePhone(phoneResolved) : '';
+  const ph = phoneResolved
+    ? normalizeLandingPhone(phoneResolved, phoneCountryCode)
+    : '';
 
   return {
     emailRaw: emailResolved,
@@ -474,7 +452,11 @@ export default function WhatsAppButton({
       config.interactions?.enabled && config.interactions.whatsappPrefillText
         ? config.interactions.whatsappPrefillText
         : '';
-    const identity = resolveIdentity(storageNamespace, params);
+    const identity = resolveIdentity(
+      storageNamespace,
+      config.tracking.phoneCountryCode || '54',
+      params
+    );
     const utmCampaign = params.get('utm_campaign') || '';
     const testEventCode = params.get('test_event_code') || '';
     sanitizeSensitiveQueryParams();
@@ -559,6 +541,7 @@ export default function WhatsAppButton({
   }, [
     slug,
     config.tracking.pixelId,
+    config.tracking.phoneCountryCode,
     config.tracking.landingTag,
     config.tracking.sendContactPixel,
     config.interactions?.enabled,
@@ -704,7 +687,10 @@ export default function WhatsAppButton({
       const effectivePhoneMode =
         phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
 
-      const phone = normalizePhone(phoneData?.phone || '');
+      const phone = normalizeLandingPhone(
+        phoneData?.phone || '',
+        config.tracking.phoneCountryCode || '54'
+      );
 
       if (!phone) {
         setIsDisabled(true);

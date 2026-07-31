@@ -16,7 +16,11 @@ export default function Landing({ slug, config }: Props) {
 
   const pixelBlock = config.tracking.pixelId ? (
     <>
-      <PixelInit pixelId={config.tracking.pixelId} slug={slug} />
+      <PixelInit
+        pixelId={config.tracking.pixelId}
+        slug={slug}
+        phoneCountryCode={config.tracking.phoneCountryCode}
+      />
       <noscript>
         <img
           height="1"

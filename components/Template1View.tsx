@@ -2,7 +2,6 @@ import CtaClickDispatcher from '@/components/CtaClickDispatcher';
 import RotatingBackground from '@/components/RotatingBackground';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
-import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
 
 type Props = {
   slug: string;
@@ -24,8 +23,6 @@ export default function Template1View({ slug, config }: Props) {
     return allowed.includes(value as (typeof allowed)[number]) ? value : 'between_title_and_info';
   })();
 
-  const resolvedFontFamily = resolveFontFamily(config.typography?.fontFamily);
-
   return (
     <main className="landing-shell">
       <CtaClickDispatcher eventName={sharedTriggerEvent} />
@@ -38,7 +35,7 @@ export default function Template1View({ slug, config }: Props) {
           overlay={false}
         />
 
-        <div className="content" style={{ fontFamily: resolvedFontFamily }}>
+        <div className="content">
           {hasLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

@@ -3,7 +3,6 @@ import FrameBackgroundTemplate2 from '@/components/FrameBackgroundTemplate2';
 import SocialProofRotator from '@/components/SocialProofRotator';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
-import { resolveFontFamily } from '@/lib/landing/resolveFontFamily';
 
 type Props = {
   slug: string;
@@ -33,7 +32,6 @@ export default function Template2View({ slug, config }: Props) {
   const badgeArray = config.content?.footerBadge || [];
   const badgeText =
     (badgeArray.find((line) => line && line.trim().length > 0) || config.content?.footerBadgeText || '').trim();
-  const fontFamily = resolveFontFamily(config.typography?.fontFamily);
   const isSocialProofEnabled = config.socialProof?.enabled !== false;
   const sharedTriggerEvent = `lp:cta-trigger:${slug}`;
 
@@ -41,10 +39,7 @@ export default function Template2View({ slug, config }: Props) {
     <main className="lp">
       <CtaClickDispatcher eventName={sharedTriggerEvent} />
       <section className="phone-view">
-        <div
-          className="artboard"
-          style={fontFamily ? { fontFamily } : undefined}
-        >
+        <div className="artboard">
           <div className="frame">
             <FrameBackgroundTemplate2
               images={images}
