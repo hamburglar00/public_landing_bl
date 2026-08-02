@@ -918,6 +918,8 @@ export default function WhatsAppButton({
     }),
     [config.colors?.ctaBackground, config.colors?.ctaText, config.typography?.cta?.sizePx, config.typography?.cta?.weight]
   );
+  const leadCaptureDescription =
+    config.leadCapture?.description || 'Completá tus datos o seguí directo a WhatsApp.';
 
   const leadCaptureModal = leadCaptureOpen && leadCaptureEnabled ? (
     <div
@@ -946,21 +948,21 @@ export default function WhatsAppButton({
           ×
         </button>
         <h2 id="public-lead-capture-title">
-          {config.leadCapture?.title || '¿Querés atención personalizada y desbloquear un código promocional?'}
+          {config.leadCapture?.title || 'Desbloqueá atención personalizada'}
         </h2>
-        {(config.leadCapture?.description || '').trim() ? (
+        {leadCaptureDescription.trim() ? (
           <p className="public-lead-capture__description">
-            {config.leadCapture?.description}
+            {leadCaptureDescription}
           </p>
         ) : null}
         <div className="public-lead-capture__grid">
           {leadCaptureFields.firstName === true ? (
             <label className="public-lead-capture__field">
-              <span>Nombre</span>
               <input
                 className="public-lead-capture__input"
                 type="text"
                 autoComplete="given-name"
+                aria-label="Nombre"
                 placeholder="Nombre"
                 value={leadCaptureForm.firstName || ''}
                 onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, firstName: event.target.value }))}
@@ -969,11 +971,11 @@ export default function WhatsAppButton({
           ) : null}
           {leadCaptureFields.lastName === true ? (
             <label className="public-lead-capture__field">
-              <span>Apellido</span>
               <input
                 className="public-lead-capture__input"
                 type="text"
                 autoComplete="family-name"
+                aria-label="Apellido"
                 placeholder="Apellido"
                 value={leadCaptureForm.lastName || ''}
                 onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, lastName: event.target.value }))}
@@ -982,11 +984,11 @@ export default function WhatsAppButton({
           ) : null}
           {leadCaptureFields.phone === true ? (
             <label className="public-lead-capture__field">
-              <span>Teléfono</span>
               <input
                 className="public-lead-capture__input"
                 type="tel"
                 autoComplete="tel"
+                aria-label="Teléfono"
                 placeholder="Teléfono"
                 value={leadCaptureForm.phone || ''}
                 onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, phone: event.target.value }))}
@@ -995,11 +997,11 @@ export default function WhatsAppButton({
           ) : null}
           {leadCaptureFields.email === true ? (
             <label className="public-lead-capture__field">
-              <span>Email</span>
               <input
                 className="public-lead-capture__input"
                 type="email"
                 autoComplete="email"
+                aria-label="Email"
                 placeholder="Email"
                 value={leadCaptureForm.email || ''}
                 onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, email: event.target.value }))}
@@ -1009,14 +1011,14 @@ export default function WhatsAppButton({
         </div>
         <div className="public-lead-capture__actions">
           <button type="submit" className="public-lead-capture__submit">
-            Continuar a WhatsApp
+            CONTINUAR A WHATSAPP →
           </button>
           <button
             type="button"
             className="public-lead-capture__skip"
             onClick={() => continueFromLeadCapture(null)}
           >
-            Omitir e ir a WhatsApp
+            OMITIR E IR A WHATSAPP
           </button>
         </div>
       </form>
