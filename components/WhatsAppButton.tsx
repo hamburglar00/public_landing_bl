@@ -36,6 +36,12 @@ type MetaTrackingParams = {
   clientIpIssuedAt: number | null;
   clientIpProof: string;
 };
+type LeadCaptureValues = {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+};
 type PreparedClickContext = {
   promoCode: string;
   message: string;
@@ -265,6 +271,29 @@ function resolveIdentity(
   };
 }
 
+function applyLeadCaptureToIdentity(
+  identity: ReturnType<typeof resolveIdentity>,
+  capture: LeadCaptureValues | null | undefined,
+  phoneCountryCode: string
+) {
+  if (!capture) return identity;
+
+  const emailRaw = String(capture.email || '').trim();
+  const phoneRaw = String(capture.phone || '').trim();
+  const firstName = String(capture.firstName || '').trim();
+  const lastName = String(capture.lastName || '').trim();
+
+  return {
+    ...identity,
+    emailRaw: emailRaw || identity.emailRaw,
+    phoneRaw: phoneRaw || identity.phoneRaw,
+    email: emailRaw ? normalizeEmail(emailRaw) : identity.email,
+    ph: phoneRaw ? normalizeLandingPhone(phoneRaw, phoneCountryCode) : identity.ph,
+    fn: firstName || identity.fn,
+    ln: lastName || identity.ln
+  };
+}
+
 function getSafeEventSourceUrl() {
   if (typeof window === 'undefined') return '';
   try {
@@ -420,6 +449,8 @@ export default function WhatsAppButton({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
+  const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
+  const [leadCaptureForm, setLeadCaptureForm] = useState<LeadCaptureValues>({});
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
   const metaTrackingRef = useRef<MetaTrackingParams>({
     fbc: '',
@@ -433,7 +464,7 @@ export default function WhatsAppButton({
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStartOnceRef = useRef(false);
-  const handleClickRef = useRef<() => Promise<void>>(async () => {});
+  const handleClickRef = useRef<(leadCaptureValues?: LeadCaptureValues | null) => Promise<void>>(async () => {});
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
@@ -634,7 +665,46 @@ export default function WhatsAppButton({
     return typeof maybeId === 'number' ? maybeId : null;
   }
 
-  async function handleClick() {
+  const leadCaptureFields = config.leadCapture?.fields ?? {};
+  const leadCaptureEnabled =
+    config.leadCapture?.enabled === true &&
+    !autoStart &&
+    (leadCaptureFields.firstName === true ||
+      leadCaptureFields.lastName === true ||
+      leadCaptureFields.phone === true ||
+      leadCaptureFields.email === true);
+
+  function closeLeadCaptureModal() {
+    setLeadCaptureOpen(false);
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('public-lead-capture-open');
+    }
+  }
+
+  function continueFromLeadCapture(capture: LeadCaptureValues | null) {
+    closeLeadCaptureModal();
+    void handleClick(capture);
+  }
+
+  function handlePrimaryClick() {
+    if (leadCaptureEnabled && !clickLockRef.current && !isLoading && !isDisabled) {
+      setLeadCaptureOpen(true);
+      return;
+    }
+    void handleClick();
+  }
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (leadCaptureOpen) {
+      document.body.classList.add('public-lead-capture-open');
+    } else {
+      document.body.classList.remove('public-lead-capture-open');
+    }
+    return () => document.body.classList.remove('public-lead-capture-open');
+  }, [leadCaptureOpen]);
+
+  async function handleClick(leadCaptureValues?: LeadCaptureValues | null) {
     if (clickLockRef.current || isLoading || isDisabled) return;
 
     clickLockRef.current = true;
@@ -655,12 +725,17 @@ export default function WhatsAppButton({
         sendContactPixel,
         identity,
         externalId,
-        emailRaw,
-        phoneRaw,
         utmCampaign,
         testEventCode,
         deviceType
       } = prepared;
+      const enrichedIdentity = applyLeadCaptureToIdentity(
+        identity,
+        leadCaptureValues,
+        config.tracking.phoneCountryCode || '54'
+      );
+      const emailRaw = enrichedIdentity.emailRaw;
+      const phoneRaw = enrichedIdentity.phoneRaw;
       let metaTracking = metaTrackingRef.current;
       if (!metaTracking.fbp || !metaTracking.fbc) {
         metaTracking = await collectMetaTrackingParamsOnce();
@@ -767,12 +842,12 @@ export default function WhatsAppButton({
         event_source_url: getSafeEventSourceUrl(),
         email: emailRaw,
         phone: phoneRaw,
-        fn: identity.fn || undefined,
-        ln: identity.ln || undefined,
-        ct: identity.ct || undefined,
-        st: identity.st || undefined,
-        zip: identity.zip || undefined,
-        country: identity.country || undefined,
+        fn: enrichedIdentity.fn || undefined,
+        ln: enrichedIdentity.ln || undefined,
+        ct: enrichedIdentity.ct || undefined,
+        st: enrichedIdentity.st || undefined,
+        zip: enrichedIdentity.zip || undefined,
+        country: enrichedIdentity.country || undefined,
         utm_campaign: utmCampaign,
         test_event_code: testEventCode || undefined,
         fbp,
@@ -844,6 +919,110 @@ export default function WhatsAppButton({
     [config.colors?.ctaBackground, config.colors?.ctaText, config.typography?.cta?.sizePx, config.typography?.cta?.weight]
   );
 
+  const leadCaptureModal = leadCaptureOpen && leadCaptureEnabled ? (
+    <div
+      className="public-lead-capture"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="public-lead-capture-title"
+      onClick={(event) => {
+        if (event.currentTarget === event.target) continueFromLeadCapture(null);
+      }}
+    >
+      <form
+        className="public-lead-capture__card"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          continueFromLeadCapture(leadCaptureForm);
+        }}
+      >
+        <button
+          type="button"
+          className="public-lead-capture__close"
+          aria-label="Omitir formulario e ir a WhatsApp"
+          onClick={() => continueFromLeadCapture(null)}
+        >
+          ×
+        </button>
+        <h2 id="public-lead-capture-title">
+          {config.leadCapture?.title || '¿Querés atención personalizada y desbloquear un código promocional?'}
+        </h2>
+        {(config.leadCapture?.description || '').trim() ? (
+          <p className="public-lead-capture__description">
+            {config.leadCapture?.description}
+          </p>
+        ) : null}
+        <div className="public-lead-capture__grid">
+          {leadCaptureFields.firstName === true ? (
+            <label className="public-lead-capture__field">
+              <span>Nombre</span>
+              <input
+                className="public-lead-capture__input"
+                type="text"
+                autoComplete="given-name"
+                placeholder="Nombre"
+                value={leadCaptureForm.firstName || ''}
+                onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, firstName: event.target.value }))}
+              />
+            </label>
+          ) : null}
+          {leadCaptureFields.lastName === true ? (
+            <label className="public-lead-capture__field">
+              <span>Apellido</span>
+              <input
+                className="public-lead-capture__input"
+                type="text"
+                autoComplete="family-name"
+                placeholder="Apellido"
+                value={leadCaptureForm.lastName || ''}
+                onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, lastName: event.target.value }))}
+              />
+            </label>
+          ) : null}
+          {leadCaptureFields.phone === true ? (
+            <label className="public-lead-capture__field">
+              <span>Teléfono</span>
+              <input
+                className="public-lead-capture__input"
+                type="tel"
+                autoComplete="tel"
+                placeholder="Teléfono"
+                value={leadCaptureForm.phone || ''}
+                onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, phone: event.target.value }))}
+              />
+            </label>
+          ) : null}
+          {leadCaptureFields.email === true ? (
+            <label className="public-lead-capture__field">
+              <span>Email</span>
+              <input
+                className="public-lead-capture__input"
+                type="email"
+                autoComplete="email"
+                placeholder="Email"
+                value={leadCaptureForm.email || ''}
+                onChange={(event) => setLeadCaptureForm((prev) => ({ ...prev, email: event.target.value }))}
+              />
+            </label>
+          ) : null}
+        </div>
+        <div className="public-lead-capture__actions">
+          <button type="submit" className="public-lead-capture__submit">
+            Continuar a WhatsApp
+          </button>
+          <button
+            type="button"
+            className="public-lead-capture__skip"
+            onClick={() => continueFromLeadCapture(null)}
+          >
+            Omitir e ir a WhatsApp
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : null;
+
   if (hideButton) return null;
 
   if (templateVariant === 'template3') {
@@ -863,13 +1042,14 @@ export default function WhatsAppButton({
 
   if (templateVariant === 'template1' || templateVariant === 'template2') {
     return (
+      <>
       <a
         href="#"
         className="cta"
         aria-label="Enviar WhatsApp"
         onClick={(e) => {
           e.preventDefault();
-          void handleClick();
+          handlePrimaryClick();
         }}
         style={{
           ...ctaStyle,
@@ -886,14 +1066,17 @@ export default function WhatsAppButton({
         </span>
         <WhatsAppIcon className="cta__icon" />
       </a>
+      {leadCaptureModal}
+      </>
     );
   }
 
   return (
+    <>
     <button
       type="button"
       className="whatsapp-button"
-      onClick={() => void handleClick()}
+      onClick={handlePrimaryClick}
       disabled={isLoading || isDisabled}
       style={{
         ...ctaStyle,
@@ -907,6 +1090,8 @@ export default function WhatsAppButton({
       <span>{isDisabled ? 'Sin número disponible' : isLoading ? 'Abriendo...' : ctaText}</span>
       <WhatsAppIcon className="whatsapp-icon" />
     </button>
+    {leadCaptureModal}
+    </>
   );
 }
 
