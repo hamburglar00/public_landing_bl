@@ -736,6 +736,27 @@ export default function WhatsAppButton({
       );
       const emailRaw = enrichedIdentity.emailRaw;
       const phoneRaw = enrichedIdentity.phoneRaw;
+      const captureFields = config.leadCapture?.fields ?? {};
+      const hasLeadCaptureForm = Boolean(leadCaptureValues);
+      const formFn =
+        hasLeadCaptureForm && captureFields.firstName
+          ? String(leadCaptureValues?.firstName || '').trim()
+          : '';
+      const formLn =
+        hasLeadCaptureForm && captureFields.lastName
+          ? String(leadCaptureValues?.lastName || '').trim()
+          : '';
+      const formEmail =
+        hasLeadCaptureForm && captureFields.email
+          ? normalizeEmail(leadCaptureValues?.email || '')
+          : '';
+      const formPhoneRaw =
+        hasLeadCaptureForm && captureFields.phone
+          ? String(leadCaptureValues?.phone || '').trim()
+          : '';
+      const formPhone = formPhoneRaw
+        ? normalizeLandingPhone(formPhoneRaw, config.tracking.phoneCountryCode || '54')
+        : '';
       let metaTracking = metaTrackingRef.current;
       if (!metaTracking.fbp || !metaTracking.fbc) {
         metaTracking = await collectMetaTrackingParamsOnce();
@@ -841,7 +862,13 @@ export default function WhatsAppButton({
         external_id: externalId,
         event_source_url: getSafeEventSourceUrl(),
         email: emailRaw,
-        phone: phoneRaw,
+        phone: enrichedIdentity.ph || phoneRaw,
+        phone_country_code: config.tracking.phoneCountryCode || undefined,
+        lead_capture_form: hasLeadCaptureForm || undefined,
+        form_fn: formFn || undefined,
+        form_ln: formLn || undefined,
+        form_email: formEmail || undefined,
+        form_phone: formPhone || undefined,
         fn: enrichedIdentity.fn || undefined,
         ln: enrichedIdentity.ln || undefined,
         ct: enrichedIdentity.ct || undefined,
