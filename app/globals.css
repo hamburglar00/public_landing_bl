@@ -247,17 +247,16 @@ select {
   padding: 12px 16px;
   margin-top: 25px;
   transition: transform 0.25s ease, opacity 0.25s ease;
-  animation: heartbeat 2s infinite ease-in-out;
 }
 
 .whatsapp-button::before {
   content: '';
   position: absolute;
   inset: 0;
-  width: 50%;
-  background: linear-gradient(120deg, transparent, rgba(255,255,255,.55), transparent);
+  width: 44%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,.34), transparent);
   transform: translateX(-150%) skewX(-25deg);
-  animation: shineX 3.5s infinite;
+  animation: shineX 5.8s infinite;
   pointer-events: none;
 }
 
@@ -274,6 +273,11 @@ select {
   cursor: not-allowed;
   opacity: 0.75;
   animation: none;
+}
+
+.whatsapp-button:disabled::before {
+  animation: none;
+  opacity: 0;
 }
 
 .whatsapp-icon {
@@ -513,21 +517,20 @@ select {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   overflow: visible;
   isolation: isolate;
-  animation: ctaHeartbeat 1.6s ease-in-out infinite;
   will-change: transform;
 }
 
 .lp .cta::after {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -3px;
   border-radius: inherit;
-  border: 2px solid rgba(255, 255, 255, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.34);
   opacity: 0;
   transform: scale(1);
   pointer-events: none;
   z-index: 0;
-  animation: ctaPulseRing 1.45s ease-out infinite;
+  animation: ctaPulseRing 2.8s ease-out infinite;
   will-change: transform, opacity;
 }
 
@@ -555,18 +558,23 @@ select {
   opacity: 0.75;
 }
 
+.lp .cta:disabled::after {
+  animation: none;
+  opacity: 0;
+}
+
 @keyframes ctaPulseRing {
   0% {
-    opacity: 0.48;
+    opacity: 0.34;
     transform: scale(1);
   }
   70% {
     opacity: 0;
-    transform: scale(1.13);
+    transform: scale(1.07);
   }
   100% {
     opacity: 0;
-    transform: scale(1.13);
+    transform: scale(1.07);
   }
 }
 
