@@ -303,6 +303,19 @@ function getSafeEventSourceUrl() {
   }
 }
 
+function resolveWorkspaceCurrency(config: LandingConfig) {
+  const raw = String(
+    config.workspaceCurrency ||
+      config.tracking.workspaceCurrency ||
+      config.tracking.currency ||
+      ''
+  )
+    .trim()
+    .toUpperCase();
+
+  return raw === 'PYG' ? 'PYG' : 'ARS';
+}
+
 function sanitizeSensitiveQueryParams() {
   if (typeof window === 'undefined') return;
   try {
@@ -787,6 +800,7 @@ export default function WhatsAppButton({
         phoneData?.phone || '',
         config.tracking.phoneCountryCode || '54'
       );
+      const workspaceCurrency = resolveWorkspaceCurrency(config);
 
       if (!phone) {
         setIsDisabled(true);
@@ -890,6 +904,8 @@ export default function WhatsAppButton({
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
+        currency: workspaceCurrency,
+        workspace_currency: workspaceCurrency,
         device_type: deviceType,
         cta_tap_to_redirect_ms: Date.now() - tapStartedAt,
         mode: config.background?.mode,
