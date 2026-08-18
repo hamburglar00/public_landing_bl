@@ -96,6 +96,23 @@ function buildMessage(promoCode: string, whatsappPrefillText?: string) {
   return extraText ? `${baseMessage}\n\n${extraText}` : baseMessage;
 }
 
+function isAtrioDestination(config: LandingConfig) {
+  return String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
+}
+
+function buildAtrioRedirectUrl(rawUrl: string | undefined, promoCode: string) {
+  try {
+    const value = String(rawUrl || '').trim();
+    if (!value) return '';
+    const url = new URL(value, typeof window !== 'undefined' ? window.location.href : undefined);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    url.searchParams.set('promo_code', promoCode);
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
 function WhatsAppIcon({ className }: { className: string }) {
   return (
     <svg
@@ -481,6 +498,7 @@ export default function WhatsAppButton({
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
+    if (isAtrioDestination(config)) return Promise.resolve(null);
     if (!phonePromiseRef.current) {
       phonePromiseRef.current = getLandingPhone(slug)
         .then((data) => data)
@@ -545,6 +563,13 @@ export default function WhatsAppButton({
   useEffect(() => {
     let cancelled = false;
 
+    if (isAtrioDestination(config)) {
+      phonePromiseRef.current = null;
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const prewarmWithRetry = async () => {
       const delays = [0, 400, 1200];
       for (let i = 0; i < delays.length; i += 1) {
@@ -570,7 +595,7 @@ export default function WhatsAppButton({
         noPhoneTimeoutRef.current = null;
       }
     };
-  }, [slug]);
+  }, [slug, config.tracking.ctaDestination]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -588,6 +613,8 @@ export default function WhatsAppButton({
     config.tracking.phoneCountryCode,
     config.tracking.landingTag,
     config.tracking.sendContactPixel,
+    config.tracking.ctaDestination,
+    config.tracking.atrioRedirectUrl,
     config.interactions?.enabled,
     config.interactions?.whatsappPrefillText
   ]);
@@ -786,23 +813,27 @@ export default function WhatsAppButton({
       const shouldSkipContact = testEventCode
         ? false
         : wasContactRecentlySent(storageNamespace, slug, externalId);
+      const atrioMode = isAtrioDestination(config);
 
       // Usa el número pre-cargado; si viene lento, hace un reintento corto.
-      let phoneData = await waitWithTimeout(ensurePhonePromise(), 1500);
-      if (!phoneData?.phone) {
+      let phoneData = atrioMode ? null : await waitWithTimeout(ensurePhonePromise(), 1500);
+      if (!atrioMode && !phoneData?.phone) {
         phonePromiseRef.current = null;
         phoneData = await waitWithTimeout(ensurePhonePromise(), 2500);
       }
       const effectivePhoneMode =
         phoneData?.phoneMode ?? phoneData?.phoneSelection?.mode ?? '';
 
-      const phone = normalizeLandingPhone(
+      const phone = atrioMode ? '' : normalizeLandingPhone(
         phoneData?.phone || '',
         config.tracking.phoneCountryCode || '54'
       );
+      const redirectUrl = atrioMode
+        ? buildAtrioRedirectUrl(config.tracking.atrioRedirectUrl, promoCode)
+        : `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       const workspaceCurrency = resolveWorkspaceCurrency(config);
 
-      if (!phone) {
+      if ((!atrioMode && !phone) || (atrioMode && !redirectUrl)) {
         setIsDisabled(true);
         if (noPhoneTimeoutRef.current) {
           clearTimeout(noPhoneTimeoutRef.current);
@@ -836,7 +867,7 @@ export default function WhatsAppButton({
 
       // Aviso de teléfono usado al servicio phone-click (no bloquea redirect)
       // Se envía para los modos de asignación soportados.
-      if (effectivePhoneMode === 'fair' || effectivePhoneMode === 'random') {
+      if (!atrioMode && (effectivePhoneMode === 'fair' || effectivePhoneMode === 'random')) {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -897,10 +928,13 @@ export default function WhatsAppButton({
         client_ip_issued_at: clientIpIssuedAt || undefined,
         client_ip_proof: clientIpProof || undefined,
         client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-        telefono_asignado: phone,
+        telefono_asignado: atrioMode ? '' : phone,
         promo_code: promoCode,
         source: 'main_button',
         source_platform: 'landing',
+        cta_destination: atrioMode ? 'atrio' : 'whatsapp',
+        redirect_channel: atrioMode ? 'atrio' : 'whatsapp',
+        atrio_redirect_url: atrioMode ? String(config.tracking.atrioRedirectUrl || '').trim() : undefined,
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
@@ -931,7 +965,7 @@ export default function WhatsAppButton({
       }
 
       await new Promise((resolve) => setTimeout(resolve, 180));
-      window.location.assign(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+      window.location.assign(redirectUrl);
     } catch {
       clickLockRef.current = false;
     } finally {
