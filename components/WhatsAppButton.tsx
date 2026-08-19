@@ -100,13 +100,18 @@ function isAtrioDestination(config: LandingConfig) {
   return String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
 }
 
-function buildAtrioRedirectUrl(rawUrl: string | undefined, promoCode: string) {
+function buildAtrioRedirectUrl(
+  rawUrl: string | undefined,
+  promoCode: string,
+  atrioId?: string
+) {
   try {
     const value = String(rawUrl || '').trim();
     if (!value) return '';
     const url = new URL(value, typeof window !== 'undefined' ? window.location.href : undefined);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
     url.searchParams.set('promo_code', promoCode);
+    if (atrioId) url.searchParams.set('atrio_id', atrioId);
     return url.toString();
   } catch {
     return '';
@@ -615,6 +620,9 @@ export default function WhatsAppButton({
     config.tracking.sendContactPixel,
     config.tracking.ctaDestination,
     config.tracking.atrioRedirectUrl,
+    config.tracking.atrioClientId,
+    config.tracking.atrioId,
+    config.tracking.atrioSlug,
     config.interactions?.enabled,
     config.interactions?.whatsappPrefillText
   ]);
@@ -829,7 +837,11 @@ export default function WhatsAppButton({
         config.tracking.phoneCountryCode || '54'
       );
       const redirectUrl = atrioMode
-        ? buildAtrioRedirectUrl(config.tracking.atrioRedirectUrl, promoCode)
+        ? buildAtrioRedirectUrl(
+          config.tracking.atrioRedirectUrl,
+          promoCode,
+          config.tracking.atrioId
+        )
         : `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       const workspaceCurrency = resolveWorkspaceCurrency(config);
 
@@ -935,6 +947,9 @@ export default function WhatsAppButton({
         cta_destination: atrioMode ? 'atrio' : 'whatsapp',
         redirect_channel: atrioMode ? 'atrio' : 'whatsapp',
         atrio_redirect_url: atrioMode ? String(config.tracking.atrioRedirectUrl || '').trim() : undefined,
+        atrio_client_id: atrioMode ? String(config.tracking.atrioClientId || '').trim() : undefined,
+        atrio_id: atrioMode ? String(config.tracking.atrioId || '').trim() : undefined,
+        atrio_slug: atrioMode ? String(config.tracking.atrioSlug || '').trim() : undefined,
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
