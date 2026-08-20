@@ -1141,7 +1141,6 @@ export default function WhatsAppButton({
   }
 
   if (templateVariant === 'template4') {
-    const template4CtaText = `Enviar y hablar con ${config.name || 'tu asesor'}`;
     return (
       <>
         <button
@@ -1149,11 +1148,11 @@ export default function WhatsAppButton({
           className="template4__cta"
           onClick={handlePrimaryClick}
           disabled={isLoading || isDisabled}
-          aria-label="Enviar mensaje"
+          aria-label="Abrir WhatsApp"
           aria-busy={isLoading}
         >
-          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : template4CtaText}</span>
-          <b aria-hidden="true">{'>'}</b>
+          {isDisabled || isLoading ? null : <WhatsAppIcon className="template4__cta-icon" />}
+          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'Abrir WhatsApp'}</span>
         </button>
         {leadCaptureModal}
       </>
