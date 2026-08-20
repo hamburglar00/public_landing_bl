@@ -36,6 +36,13 @@ export type LandingConfig = {
     /** Badge por líneas (plantilla 2) */
     footerBadge?: string[];
     ctaText: string;
+    template4?: {
+      profileImageUrl?: string;
+      bubble1Text?: string;
+      bubble2Intro?: string;
+      bubble2Items?: string[];
+      bubble3Text?: string;
+    };
   };
   typography?: {
     fontFamily: 'system' | string;

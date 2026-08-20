@@ -9,8 +9,31 @@ type Props = {
   config: LandingConfig;
 };
 
+const TEMPLATE4_CHAT_DEFAULTS = {
+  profileImageUrl: '',
+  bubble1Text: 'Hola, soy {{name}}, enviame un mensaje y comenzamos ya mismo.',
+  bubble2Intro: 'Te acompano en todo el proceso',
+  bubble2Items: [
+    '💸 Cargas y retiros las 24hs',
+    '👤 Atencion personalizada',
+    '🛡️ Respaldo y mas de 5 anos de experiencia'
+  ],
+  bubble3Text: 'Arrancamos? Toca abajo y comenzamos'
+};
+
+function template4Text(value: string, name: string) {
+  return value.replace(/\{\{\s*name\s*\}\}/gi, name);
+}
+
 export default function Template4View({ slug, config }: Props) {
   const name = config.name || 'tu asesor';
+  const chat = {
+    ...TEMPLATE4_CHAT_DEFAULTS,
+    ...(config.content?.template4 ?? {})
+  };
+  const bubble2Items = (chat.bubble2Items ?? TEMPLATE4_CHAT_DEFAULTS.bubble2Items).filter(
+    (item) => item.trim().length > 0
+  );
   const [liveCount, setLiveCount] = useState(14);
   const [currentTime, setCurrentTime] = useState('--:--');
 
@@ -44,11 +67,20 @@ export default function Template4View({ slug, config }: Props) {
       <section className="template4__phone" aria-label="Chat en vivo">
         <div className="template4__intro">
           <div className="template4__spinner">
-            <div className="template4__photo template4__photo--large">
-              foto
-              <br />
-              asesora
-            </div>
+            {chat.profileImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={chat.profileImageUrl}
+                alt=""
+                className="template4__photo template4__photo--large"
+              />
+            ) : (
+              <div className="template4__photo template4__photo--large">
+                foto
+                <br />
+                asesora
+              </div>
+            )}
           </div>
           <div className="template4__intro-copy">
             <span>Abriendo sala</span>
@@ -59,9 +91,14 @@ export default function Template4View({ slug, config }: Props) {
 
         <header className="template4__header">
           <div className="template4__avatar-wrap">
-            <div className="template4__photo" aria-hidden="true">
-              foto
-            </div>
+            {chat.profileImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={chat.profileImageUrl} alt="" className="template4__photo" />
+            ) : (
+              <div className="template4__photo" aria-hidden="true">
+                foto
+              </div>
+            )}
             <i className="template4__online-dot" />
           </div>
           <div className="template4__who">
@@ -84,20 +121,20 @@ export default function Template4View({ slug, config }: Props) {
               </span>
             </div>
             <div className="template4__bubble template4__bubble--in template4__bubble--delay-1">
-              <p>Hola, soy {name}, enviame un mensaje y comenzamos ya mismo.</p>
+              <p>{template4Text(chat.bubble1Text, name)}</p>
               <span>{messageTime}</span>
             </div>
             <div className="template4__bubble template4__bubble--in template4__bubble--delay-2">
-              <p>Te acompano en todo el proceso</p>
+              <p>{template4Text(chat.bubble2Intro, name)}</p>
               <ul>
-                <li>💸 Cargas y retiros las 24hs</li>
-                <li>👤 Atencion personalizada</li>
-                <li>🛡️ Respaldo y mas de 5 anos de experiencia</li>
+                {bubble2Items.map((item) => (
+                  <li key={item}>{template4Text(item, name)}</li>
+                ))}
               </ul>
               <span>{messageTime}</span>
             </div>
             <div className="template4__bubble template4__bubble--in template4__bubble--delay-3">
-              <p>Arrancamos? Toca abajo y comenzamos</p>
+              <p>{template4Text(chat.bubble3Text, name)}</p>
               <span>{messageTime}</span>
             </div>
           </div>
