@@ -710,6 +710,11 @@ export default function WhatsAppButton({
 
   const ctaText = useMemo(() => config.content?.ctaText || '¡Contactar ya!', [config.content?.ctaText]);
 
+  const template4CtaText =
+    templateVariant === 'template4' && (!ctaText.trim() || ctaText === 'Acceder')
+      ? 'ABRIR WHATSAPP'
+      : ctaText;
+
   function extractPhoneId(
     phoneData: Awaited<ReturnType<typeof getLandingPhone>> | null
   ): number | null {
@@ -1016,6 +1021,17 @@ export default function WhatsAppButton({
     }),
     [config.colors?.ctaBackground, config.colors?.ctaText, config.typography?.cta?.sizePx, config.typography?.cta?.weight]
   );
+  const template4CtaStyle = useMemo(
+    () => ({
+      ...ctaStyle,
+      color: !config.colors?.ctaText || config.colors.ctaText === '#000000' ? '#FFFFFF' : config.colors.ctaText,
+      background:
+        !config.colors?.ctaBackground || config.colors.ctaBackground === '#FFD700'
+          ? '#25D366'
+          : config.colors.ctaBackground
+    }),
+    [config.colors?.ctaBackground, config.colors?.ctaText, ctaStyle]
+  );
   const leadCaptureDescription =
     config.leadCapture?.description || 'Completá tus datos o seguí directo a WhatsApp.';
 
@@ -1146,13 +1162,14 @@ export default function WhatsAppButton({
         <button
           type="button"
           className="template4__cta"
+          style={template4CtaStyle}
           onClick={handlePrimaryClick}
           disabled={isLoading || isDisabled}
-          aria-label="Abrir WhatsApp"
+          aria-label={template4CtaText}
           aria-busy={isLoading}
         >
           {isDisabled || isLoading ? null : <WhatsAppIcon className="template4__cta-icon" />}
-          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'Abrir WhatsApp'}</span>
+          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : template4CtaText}</span>
         </button>
         {leadCaptureModal}
       </>
