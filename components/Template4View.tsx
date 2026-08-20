@@ -36,7 +36,7 @@ export default function Template4View({ slug, config }: Props) {
           </div>
           <div className="template4__who">
             <b>{name} · Asesora</b>
-            <span>escribiendo...</span>
+            <span>En linea · responde en ~40 seg</span>
           </div>
           <time className="template4__time">
             Ahora
@@ -91,7 +91,7 @@ export default function Template4View({ slug, config }: Props) {
             <i />
             Te responde una persona real, ahora mismo
           </div>
-          <small>+18 · Juego responsable · Jugar puede causar adiccion</small>
+          <small>+18 · Juego responsable · Licencia [nro.] · Jugar puede causar adiccion</small>
         </footer>
       </section>
     </main>
