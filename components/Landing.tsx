@@ -3,6 +3,8 @@ import PrivacyFooter from '@/components/PrivacyFooter';
 import Template1View from '@/components/Template1View';
 import Template2View from '@/components/Template2View';
 import Template3View from '@/components/Template3View';
+import Template4View from '@/components/Template4View';
+import Template5View from '@/components/Template5View';
 import type { LandingConfig } from '@/lib/landing/types';
 
 type Props = {
@@ -13,6 +15,8 @@ type Props = {
 export default function Landing({ slug, config }: Props) {
   const isTemplate2 = config.layout?.template === 2;
   const isTemplate3 = config.layout?.template === 3;
+  const isTemplate4 = config.layout?.template === 4;
+  const isTemplate5 = config.layout?.template === 5;
 
   const pixelBlock = config.tracking.pixelId ? (
     <>
@@ -48,6 +52,26 @@ export default function Landing({ slug, config }: Props) {
       <>
         {pixelBlock}
         <Template2View slug={slug} config={config} />
+        <PrivacyFooter config={config} />
+      </>
+    );
+  }
+
+  if (isTemplate4) {
+    return (
+      <>
+        {pixelBlock}
+        <Template4View slug={slug} config={config} />
+        <PrivacyFooter config={config} />
+      </>
+    );
+  }
+
+  if (isTemplate5) {
+    return (
+      <>
+        {pixelBlock}
+        <Template5View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
     );

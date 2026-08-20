@@ -21,7 +21,13 @@ import {
 type Props = {
   slug: string;
   config: LandingConfig;
-  templateVariant?: 'default' | 'template1' | 'template2' | 'template3';
+  templateVariant?:
+    | 'default'
+    | 'template1'
+    | 'template2'
+    | 'template3'
+    | 'template4'
+    | 'template5';
   autoStart?: boolean;
   hideButton?: boolean;
   externalTriggerEvent?: string;
@@ -1131,6 +1137,44 @@ export default function WhatsAppButton({
       >
         {isDisabled ? 'reintenta en un momento' : isLoading ? 'conectando...' : 'haz clic aquí.'}
       </button>
+    );
+  }
+
+  if (templateVariant === 'template4') {
+    return (
+      <>
+        <button
+          type="button"
+          className="template4__cta"
+          onClick={handlePrimaryClick}
+          disabled={isLoading || isDisabled}
+          aria-label="Enviar mensaje"
+          aria-busy={isLoading}
+        >
+          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'Enviar mensaje'}</span>
+          <b aria-hidden="true">{'>'}</b>
+        </button>
+        {leadCaptureModal}
+      </>
+    );
+  }
+
+  if (templateVariant === 'template5') {
+    return (
+      <>
+        <button
+          type="button"
+          className="template5__cta"
+          onClick={handlePrimaryClick}
+          disabled={isLoading || isDisabled}
+          aria-label="Hablar ahora"
+          aria-busy={isLoading}
+        >
+          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'Hablar ahora'}</span>
+          <WhatsAppIcon className="template5__cta-icon" />
+        </button>
+        {leadCaptureModal}
+      </>
     );
   }
 
