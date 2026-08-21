@@ -12,7 +12,7 @@ type Props = {
 const TEMPLATE4_CHAT_DEFAULTS = {
   profileImageUrl: '',
   bubble1Text: 'Hola, soy {{name}}, enviame un mensaje y comenzamos ya mismo.',
-  bubble2Intro: 'Te acompano en todo el proceso',
+  bubble2Intro: 'Te acompaño en todo el proceso',
   bubble2Items: [
     '💸 Cargas y retiros las 24hs',
     '👤 Atencion personalizada',
