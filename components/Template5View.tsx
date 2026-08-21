@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
@@ -16,13 +16,37 @@ const FEED_ITEMS = [
   ['Laura P.', 'hace 29 s', '$ 780.000'],
   ['Mica R.', 'hace 34 s', '$ 540.000'],
   ['Tomas D.', 'hace 42 s', '$ 1.320.000'],
-  ['Rocio M.', 'hace 51 s', '$ 690.000']
+  ['Rocio M.', 'hace 51 s', '$ 690.000'],
+  ['Daniela T.', 'hace 8 s', '$ 980.000'],
+  ['Lucas F.', 'hace 14 s', '$ 420.000'],
+  ['Valen S.', 'hace 23 s', '$ 1.760.000'],
+  ['Nico P.', 'hace 31 s', '$ 315.000'],
+  ['Flor V.', 'hace 38 s', '$ 890.000'],
+  ['Agus M.', 'hace 46 s', '$ 2.100.000'],
+  ['Sofi L.', 'hace 57 s', '$ 610.000'],
+  ['Juan C.', 'hace 12 s', '$ 1.480.000'],
+  ['Pablo R.', 'hace 19 s', '$ 730.000'],
+  ['Lau G.', 'hace 27 s', '$ 560.000'],
+  ['Dario B.', 'hace 36 s', '$ 1.250.000'],
+  ['Cami N.', 'hace 44 s', '$ 340.000'],
+  ['Fede H.', 'hace 52 s', '$ 1.690.000'],
+  ['Maru D.', 'hace 9 s', '$ 770.000'],
+  ['Eze Q.', 'hace 16 s', '$ 450.000'],
+  ['Juli A.', 'hace 24 s', '$ 1.030.000'],
+  ['Bruno K.', 'hace 33 s', '$ 640.000'],
+  ['Meli F.', 'hace 41 s', '$ 1.870.000'],
+  ['Lean T.', 'hace 49 s', '$ 520.000'],
+  ['Ari B.', 'hace 55 s', '$ 930.000'],
+  ['Belen C.', 'hace 11 s', '$ 1.410.000'],
+  ['Rama J.', 'hace 21 s', '$ 680.000'],
+  ['Luli P.', 'hace 30 s', '$ 2.350.000'],
+  ['Gonza V.', 'hace 39 s', '$ 810.000']
 ] as const;
 
 const TEMPLATE5_DEFAULTS = {
   titleText: 'ESTA PASANDO\nAHORA MISMO.',
   subtitleText:
-    'Un asesor te abre la cuenta en 2 minutos por WhatsApp y te acompana en todo el proceso...',
+    'Un asesor te abre la cuenta en 2 minutos por WhatsApp y te acompaña en todo el proceso...',
   profileImageUrl: '',
   backgroundImageUrl: ''
 };
@@ -41,7 +65,8 @@ export default function Template5View({ slug, config }: Props) {
   const name = config.name || 'asesor';
   const [currentTime, setCurrentTime] = useState('--:--');
   const [viewerCount, setViewerCount] = useState(1278);
-  const [feedIndex, setFeedIndex] = useState(0);
+  const nextFeedIndex = useRef(3);
+  const [visibleFeed, setVisibleFeed] = useState(() => FEED_ITEMS.slice(0, 3));
   const [createdCount, setCreatedCount] = useState(1323);
   const [advisorCount, setAdvisorCount] = useState(6);
   const live = {
@@ -68,7 +93,11 @@ export default function Template5View({ slug, config }: Props) {
       });
     }, 2200);
     const feedTimer = window.setInterval(() => {
-      setFeedIndex((current) => (current + 1) % FEED_ITEMS.length);
+      setVisibleFeed((currentRows) => {
+        const nextItem = FEED_ITEMS[nextFeedIndex.current % FEED_ITEMS.length];
+        nextFeedIndex.current = (nextFeedIndex.current + 1) % FEED_ITEMS.length;
+        return [nextItem, ...currentRows].slice(0, 3);
+      });
     }, 3600);
     const createdTimer = window.setInterval(() => {
       setCreatedCount((current) => current + 1 + Math.floor(Math.random() * 3));
@@ -87,10 +116,6 @@ export default function Template5View({ slug, config }: Props) {
   }, []);
 
   const displayTime = currentTime === '--:--' ? '23:11' : currentTime;
-  const visibleFeed = useMemo(
-    () => FEED_ITEMS.slice(0, 3).map((_, index) => FEED_ITEMS[(feedIndex + index) % FEED_ITEMS.length]),
-    [feedIndex]
-  );
 
   return (
     <main className="template5">
@@ -174,7 +199,7 @@ export default function Template5View({ slug, config }: Props) {
               </strong>
             </div>
             {visibleFeed.map(([who, when, amount]) => (
-              <p className="template5__feed-row--pulse" key={`${who}-${feedIndex}`}>
+              <p className="template5__feed-row--pulse" key={`${who}-${when}`}>
                 <span>
                   <b>{who}</b>
                   <small>{when}</small>
