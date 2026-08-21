@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 
@@ -18,11 +19,37 @@ const FEED_ITEMS = [
   ['Rocio M.', 'hace 51 s', '$ 690.000']
 ] as const;
 
+const TEMPLATE5_DEFAULTS = {
+  titleText: 'ESTA PASANDO\nAHORA MISMO.',
+  subtitleText:
+    'Un asesor te abre la cuenta en 2 minutos por WhatsApp y te acompana en todo el proceso...',
+  profileImageUrl: '',
+  backgroundImageUrl: ''
+};
+
+function splitLines(value: string | undefined, fallback: string, maxLines: number) {
+  const lines = String(value || fallback)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, maxLines);
+
+  return lines.length > 0 ? lines : fallback.split(/\r?\n/).slice(0, maxLines);
+}
+
 export default function Template5View({ slug, config }: Props) {
   const name = config.name || 'asesor';
   const [currentTime, setCurrentTime] = useState('--:--');
   const [viewerCount, setViewerCount] = useState(1278);
   const [feedIndex, setFeedIndex] = useState(0);
+  const [createdCount, setCreatedCount] = useState(1323);
+  const [advisorCount, setAdvisorCount] = useState(6);
+  const live = {
+    ...TEMPLATE5_DEFAULTS,
+    ...(config.content?.template5 ?? {})
+  };
+  const titleLines = splitLines(live.titleText, TEMPLATE5_DEFAULTS.titleText, 3);
+  const subtitleLines = splitLines(live.subtitleText, TEMPLATE5_DEFAULTS.subtitleText, 2);
 
   useEffect(() => {
     const formatTime = () =>
@@ -43,11 +70,19 @@ export default function Template5View({ slug, config }: Props) {
     const feedTimer = window.setInterval(() => {
       setFeedIndex((current) => (current + 1) % FEED_ITEMS.length);
     }, 3600);
+    const createdTimer = window.setInterval(() => {
+      setCreatedCount((current) => current + 1 + Math.floor(Math.random() * 3));
+    }, 4300);
+    const advisorTimer = window.setInterval(() => {
+      setAdvisorCount(2 + Math.floor(Math.random() * 9));
+    }, 2700);
 
     return () => {
       window.clearInterval(timeTimer);
       window.clearInterval(viewerTimer);
       window.clearInterval(feedTimer);
+      window.clearInterval(createdTimer);
+      window.clearInterval(advisorTimer);
     };
   }, []);
 
@@ -59,7 +94,18 @@ export default function Template5View({ slug, config }: Props) {
 
   return (
     <main className="template5">
-      <section className="template5__phone" aria-label="Atencion en vivo">
+      <section
+        className="template5__phone"
+        aria-label="Atencion en vivo"
+        style={
+          live.backgroundImageUrl
+            ? ({
+                '--template5-background-image': `url("${live.backgroundImageUrl}")`,
+                '--template5-background-opacity': 0.72
+              } as CSSProperties)
+            : undefined
+        }
+      >
         <div className="template5__ambient" aria-hidden="true" />
         <div className="template5__curtain">
           <span>EN VIVO</span>
@@ -78,23 +124,43 @@ export default function Template5View({ slug, config }: Props) {
 
           <section className="template5__hero">
             <h1>
-              <span>ESTA PASANDO</span>
-              <b>AHORA MISMO.</b>
+              {titleLines.map((line, index) =>
+                index === 0 ? (
+                  <span key={`${line}-${index}`}>{line}</span>
+                ) : (
+                  <b key={`${line}-${index}`}>{line}</b>
+                )
+              )}
             </h1>
-            <p>Un asesor te abre la cuenta en 2 minutos por WhatsApp y te acompana en todo el proceso...</p>
+            <p>
+              {subtitleLines.map((line, index) => (
+                <span key={`${line}-${index}`}>{line}</span>
+              ))}
+            </p>
           </section>
 
           <section className="template5__advisor">
-            <div className="template5__avatar" aria-hidden="true">
-              foto
-              <br />
-              asesor
+            <div className="template5__avatar-wrap">
+              {live.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={live.profileImageUrl}
+                  alt=""
+                  className="template5__avatar-img"
+                />
+              ) : (
+                <div className="template5__avatar-placeholder" aria-hidden="true">
+                  foto
+                  <br />
+                  asesor
+                </div>
+              )}
+              <i className="template5__advisor-dot" />
             </div>
             <div>
               <strong>{name} · tu asesora</strong>
               <span>En linea · responde en ~40 seg</span>
             </div>
-            <i />
           </section>
 
           <div className="template5__progress" aria-hidden="true">
@@ -120,19 +186,18 @@ export default function Template5View({ slug, config }: Props) {
 
           <section className="template5__activity" aria-label="Actividad de asesores">
             <article>
-              <span>Cuenta creada</span>
-              <strong>hace 12 s</strong>
+              <span>Cuentas creadas</span>
+              <strong>{createdCount.toLocaleString('es-AR')}</strong>
             </article>
             <article>
-              <span>Asesor disponible</span>
-              <strong>ahora</strong>
+              <span>Asesores disponibles</span>
+              <strong>{advisorCount} en vivo</strong>
             </article>
           </section>
         </div>
 
         <footer className="template5__footer">
           <WhatsAppButton slug={slug} config={config} templateVariant="template5" />
-          <small>{name} te contesta en persona, ahora mismo</small>
         </footer>
       </section>
     </main>

@@ -44,6 +44,12 @@ export type LandingConfig = {
       bubble2Items?: string[];
       bubble3Text?: string;
     };
+    template5?: {
+      titleText?: string;
+      subtitleText?: string;
+      profileImageUrl?: string;
+      backgroundImageUrl?: string;
+    };
   };
   typography?: {
     fontFamily: 'system' | string;
