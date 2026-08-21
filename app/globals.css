@@ -1500,6 +1500,19 @@ select {
   }
 }
 
+@keyframes publicLandingCurtain {
+  0%,
+  72% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+    visibility: hidden;
+  }
+}
+
 @keyframes fixedTemplateTyping {
   0%,
   100% {
@@ -2381,5 +2394,7 @@ body.public-lead-capture-open {
   .template4__intro,
   .template5__curtain {
     animation: none !important;
+    opacity: 0;
+    visibility: hidden;
   }
 }
