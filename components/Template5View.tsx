@@ -183,7 +183,7 @@ export default function Template5View({ slug, config }: Props) {
               <i className="template5__advisor-dot" />
             </div>
             <div>
-              <strong>{name} · tu asesora</strong>
+              <strong>{name} · tu asesora designada</strong>
               <span>En linea · responde en ~40 seg</span>
             </div>
           </section>
@@ -195,7 +195,7 @@ export default function Template5View({ slug, config }: Props) {
           <section className="template5__feed" aria-label="Actividad reciente">
             <div>
               <strong>
-                <span className="template5__feed-dot" /> RETIROS PAGADOS · EN VIVO
+                <span className="template5__feed-dot" /> EN VIVO
               </strong>
             </div>
             {visibleFeed.map(([who, when, amount]) => (
