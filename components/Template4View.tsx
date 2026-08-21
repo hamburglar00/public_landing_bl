@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 
@@ -11,6 +11,7 @@ type Props = {
 
 const TEMPLATE4_CHAT_DEFAULTS = {
   profileImageUrl: '',
+  backgroundImageUrl: '',
   bubble1Text: 'Hola, soy {{name}}, enviame un mensaje y comenzamos ya mismo.',
   bubble2Intro: 'Te acompaño en todo el proceso',
   bubble2Items: [
@@ -61,10 +62,20 @@ export default function Template4View({ slug, config }: Props) {
   }, []);
 
   const messageTime = currentTime === '--:--' ? '19:36' : currentTime;
+  const chatBackgroundStyle = chat.backgroundImageUrl
+    ? ({
+        '--template4-chat-background-image': `url("${chat.backgroundImageUrl}")`,
+        '--template4-chat-background-size': 'cover',
+        '--template4-chat-background-position': 'center',
+        '--template4-chat-background-opacity': '1',
+        '--template4-chat-background-overlay':
+          'linear-gradient(rgba(7,16,19,.42),rgba(7,16,19,.42))'
+      } as CSSProperties)
+    : undefined;
 
   return (
     <main className="template4">
-      <section className="template4__phone" aria-label="Chat en vivo">
+      <section className="template4__phone" aria-label="Chat en vivo" style={chatBackgroundStyle}>
         <div className="template4__intro">
           <div className="template4__spinner">
             {chat.profileImageUrl ? (
