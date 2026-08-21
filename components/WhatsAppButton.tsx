@@ -1184,11 +1184,11 @@ export default function WhatsAppButton({
           className="template5__cta"
           onClick={handlePrimaryClick}
           disabled={isLoading || isDisabled}
-          aria-label="Hablar ahora"
+          aria-label="ENTRAR POR WHATSAPP"
           aria-busy={isLoading}
         >
-          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'Hablar ahora'}</span>
           <WhatsAppIcon className="template5__cta-icon" />
+          <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'ENTRAR POR WHATSAPP'}</span>
         </button>
         {leadCaptureModal}
       </>

@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
 
@@ -8,6 +11,22 @@ type Props = {
 
 export default function Template5View({ slug, config }: Props) {
   const name = config.name || 'asesor';
+  const [currentTime, setCurrentTime] = useState('--:--');
+
+  useEffect(() => {
+    const formatTime = () =>
+      new Intl.DateTimeFormat('es-AR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(new Date());
+
+    setCurrentTime(formatTime());
+    const timer = window.setInterval(() => setCurrentTime(formatTime()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const displayTime = currentTime === '--:--' ? '23:11' : currentTime;
 
   return (
     <main className="template5">
@@ -17,26 +36,34 @@ export default function Template5View({ slug, config }: Props) {
           <strong>Entrando...</strong>
         </div>
 
-        <div className="template5__topbar">
-          <span className="template5__live-dot" />
-          <span>EN VIVO</span>
-          <time>Ahora</time>
+        <div className="template5__topline">
+          <div className="template5__live-badge">
+            <span className="template5__live-dot" />
+            <strong>EN VIVO</strong>
+            <time>{displayTime}</time>
+          </div>
+          <span className="template5__viewers">1.278 viendo</span>
         </div>
 
         <section className="template5__hero">
-          <p className="template5__kicker">Atencion personalizada</p>
-          <h1>Esta pasando ahora mismo.</h1>
-          <p>Un asesor esta disponible para ayudarte por el canal asignado.</p>
+          <h1>
+            <span>ESTA PASANDO</span>
+            <b>AHORA MISMO.</b>
+          </h1>
+          <p>Un asesor te abre la cuenta en 2 minutos por WhatsApp y te acompaña en todo el proceso...</p>
         </section>
 
         <section className="template5__advisor">
           <div className="template5__avatar" aria-hidden="true">
-            PB
+            foto
+            <br />
+            asesor
           </div>
           <div>
-            <strong>{name}</strong>
-            <span>Disponible para responder</span>
+            <strong>{name} · tu asesora</strong>
+            <span>En linea · responde en ~40 seg</span>
           </div>
+          <i />
         </section>
 
         <div className="template5__progress" aria-hidden="true">
@@ -45,23 +72,36 @@ export default function Template5View({ slug, config }: Props) {
 
         <section className="template5__feed" aria-label="Actividad reciente">
           <div>
-            <strong>RETIROS PAGADOS</strong>
-            <span>EN VIVO</span>
+            <strong>
+              <span className="template5__feed-dot" /> RETIROS PAGADOS · EN VIVO
+            </strong>
           </div>
           <p>
-            <b>12:02</b> Solicitud recibida y atendida
+            <span>
+              <b>Camilo A.</b>
+              <small>hace 5 s</small>
+            </span>
+            <strong>$ 1.150.000</strong>
           </p>
           <p>
-            <b>12:04</b> Asesor asignado correctamente
+            <span>
+              <b>Sebastian G.</b>
+              <small>hace 17 s</small>
+            </span>
+            <strong>$ 260.000</strong>
           </p>
           <p>
-            <b>12:06</b> Seguimiento activo por WhatsApp
+            <span>
+              <b>Laura P.</b>
+              <small>hace 29 s</small>
+            </span>
+            <strong>$ 780.000</strong>
           </p>
         </section>
 
         <footer className="template5__footer">
           <WhatsAppButton slug={slug} config={config} templateVariant="template5" />
-          <small>Continuas con un asesor asignado segun disponibilidad.</small>
+          <small>{name} te contesta en persona, ahora mismo</small>
         </footer>
       </section>
     </main>
