@@ -1,12 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import type { LandingConfig } from '@/lib/landing/types';
+import { getLandingPhone } from '@/lib/landing/getLandingPhone';
+import type { LandingConfig, LandingPhoneResponse } from '@/lib/landing/types';
 import {
   buildTrackingStorageKey,
   buildTrackingStorageNamespace
 } from '@/lib/tracking/clientStorage';
-import { firstNonEmpty, getOrCreateExternalId } from '@/lib/tracking/identity';
+import {
+  firstNonEmpty,
+  getOrCreateExternalId,
+  normalizeLandingPhone
+} from '@/lib/tracking/identity';
 
 type Props = {
   slug: string;
@@ -125,6 +130,20 @@ function markPageViewSent(storageNamespace: string, slug: string, externalId: st
   }
 }
 
+async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timeoutId = setTimeout(() => resolve(null), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 function sendPageViewBestEffort(body: string): Promise<boolean> {
   if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
     try {
@@ -157,6 +176,49 @@ function resolveWorkspaceCurrency(config: LandingConfig) {
     .toUpperCase();
 
   return raw === 'PYG' ? 'PYG' : 'ARS';
+}
+
+function isAtrioDestination(config: LandingConfig) {
+  return String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function extractAssignedGerenciaSnapshot(phoneData: LandingPhoneResponse | null) {
+  if (!phoneData || typeof phoneData !== 'object') return {};
+  const gerencia = (phoneData.gerencia || {}) as {
+    id?: unknown;
+    externalId?: unknown;
+    external_id?: unknown;
+    gerencia_id?: unknown;
+    name?: unknown;
+    nombre?: unknown;
+  };
+  const internalId = asFiniteNumber(gerencia.id);
+  const externalId = firstNonEmpty(
+    gerencia.externalId == null ? undefined : String(gerencia.externalId),
+    gerencia.external_id == null ? undefined : String(gerencia.external_id),
+    gerencia.gerencia_id == null ? undefined : String(gerencia.gerencia_id),
+    internalId == null ? undefined : String(internalId)
+  );
+  const name = firstNonEmpty(
+    gerencia.name == null ? undefined : String(gerencia.name),
+    gerencia.nombre == null ? undefined : String(gerencia.nombre)
+  );
+  const label = name && externalId
+    ? `${name} (ID ${externalId})`
+    : name || (externalId ? `Gerencia ${externalId}` : '');
+
+  return {
+    assigned_gerencia_id:
+      internalId && internalId > 0 ? internalId : undefined,
+    assigned_gerencia_external_id: externalId || undefined,
+    assigned_gerencia_name: name || undefined,
+    assigned_gerencia_label: label || undefined
+  };
 }
 
 export default function LandingPageViewTracker({ slug, config }: Props) {
@@ -199,9 +261,31 @@ export default function LandingPageViewTracker({ slug, config }: Props) {
       client_user_agent: navigator.userAgent || undefined
     };
 
-    void sendPageViewBestEffort(JSON.stringify(payload)).then((sent) => {
-      if (sent) markPageViewSent(storageNamespace, slug, externalId);
-    });
+    void sendPageViewBestEffort(JSON.stringify(payload))
+      .then(async (sent) => {
+        if (sent) markPageViewSent(storageNamespace, slug, externalId);
+        if (isAtrioDestination(config)) return;
+
+        const phoneData = await waitWithTimeout(
+          getLandingPhone(slug).catch(() => null),
+          1500
+        );
+        if (!phoneData?.phone) return;
+
+        const assignedPhone = normalizeLandingPhone(
+          phoneData.phone,
+          config.tracking.phoneCountryCode || '54'
+        );
+        const enrichedSent = await sendPageViewBestEffort(JSON.stringify({
+          ...payload,
+          telefono_asignado: assignedPhone || undefined,
+          ...extractAssignedGerenciaSnapshot(phoneData)
+        }));
+        if (enrichedSent) markPageViewSent(storageNamespace, slug, externalId);
+      })
+      .catch(() => {
+        // El PageView interno nunca debe afectar la experiencia.
+      });
   }, [
     slug,
     config.id,
