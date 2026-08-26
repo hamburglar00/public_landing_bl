@@ -130,20 +130,6 @@ function markPageViewSent(storageNamespace: string, slug: string, externalId: st
   }
 }
 
-async function waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<null>((resolve) => {
-        timeoutId = setTimeout(() => resolve(null), timeoutMs);
-      })
-    ]);
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
-}
-
 function sendPageViewBestEffort(body: string): Promise<boolean> {
   if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
     try {
@@ -266,10 +252,7 @@ export default function LandingPageViewTracker({ slug, config }: Props) {
         if (sent) markPageViewSent(storageNamespace, slug, externalId);
         if (isAtrioDestination(config)) return;
 
-        const phoneData = await waitWithTimeout(
-          getLandingPhone(slug).catch(() => null),
-          1500
-        );
+        const phoneData = await getLandingPhone(slug).catch(() => null);
         if (!phoneData?.phone) return;
 
         const assignedPhone = normalizeLandingPhone(
