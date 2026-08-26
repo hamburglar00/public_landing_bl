@@ -1,4 +1,5 @@
 import PixelInit from '@/components/PixelInit';
+import LandingPageViewTracker from '@/components/LandingPageViewTracker';
 import PrivacyFooter from '@/components/PrivacyFooter';
 import Template1View from '@/components/Template1View';
 import Template2View from '@/components/Template2View';
@@ -41,6 +42,7 @@ export default function Landing({ slug, config }: Props) {
     return (
       <>
         {pixelBlock}
+        <LandingPageViewTracker slug={slug} config={config} />
         <Template3View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
@@ -51,6 +53,7 @@ export default function Landing({ slug, config }: Props) {
     return (
       <>
         {pixelBlock}
+        <LandingPageViewTracker slug={slug} config={config} />
         <Template2View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
@@ -61,6 +64,7 @@ export default function Landing({ slug, config }: Props) {
     return (
       <>
         {pixelBlock}
+        <LandingPageViewTracker slug={slug} config={config} />
         <Template4View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
@@ -71,6 +75,7 @@ export default function Landing({ slug, config }: Props) {
     return (
       <>
         {pixelBlock}
+        <LandingPageViewTracker slug={slug} config={config} />
         <Template5View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
@@ -80,6 +85,7 @@ export default function Landing({ slug, config }: Props) {
   return (
     <>
       {pixelBlock}
+      <LandingPageViewTracker slug={slug} config={config} />
       <Template1View slug={slug} config={config} />
       <PrivacyFooter config={config} />
     </>

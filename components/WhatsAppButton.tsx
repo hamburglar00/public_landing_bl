@@ -274,7 +274,9 @@ function resolveIdentity(
 
   const externalIdResolved = firstNonEmpty(
     meta.externalId || '',
-    getLocalStorageValue(storageNamespace, 'external_id')
+    getLocalStorageValue(storageNamespace, 'external_id'),
+    getParam('external_id'),
+    getParam('eid')
   );
 
   const externalId =
