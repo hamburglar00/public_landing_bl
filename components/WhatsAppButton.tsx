@@ -97,7 +97,7 @@ function generatePromoCode(tag: string) {
 }
 
 function buildMessage(promoCode: string, whatsappPrefillText?: string) {
-  const baseMessage = `Hola! quiero mas informacion por favor! Mi codigo es: ${promoCode} y mi nombre es:`.trim();
+  const baseMessage = `Hola! quiero mas informacion por favor! ${promoCode}\nMi nombre es:`.trim();
   const extraText = String(whatsappPrefillText || '').trim();
   return extraText ? `${baseMessage}\n\n${extraText}` : baseMessage;
 }
