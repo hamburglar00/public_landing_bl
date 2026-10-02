@@ -1,6 +1,7 @@
 import CtaClickDispatcher from '@/components/CtaClickDispatcher';
 import RotatingBackground from '@/components/RotatingBackground';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import InlineEmailCapture from '@/components/InlineEmailCapture';
 import type { LandingConfig } from '@/lib/landing/types';
 
 type Props = {
@@ -22,12 +23,14 @@ export default function Template1View({ slug, config }: Props) {
     const allowed = ['top', 'between_title_and_info', 'between_info_and_badge', 'bottom'] as const;
     return allowed.includes(value as (typeof allowed)[number]) ? value : 'between_title_and_info';
   })();
+  const emailCaptureEnabled = config.emailCapture?.enabled === true;
+  const cta = <>{emailCaptureEnabled ? <InlineEmailCapture /> : null}<WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} /></>;
 
   return (
     <main className="landing-shell">
       <CtaClickDispatcher eventName={sharedTriggerEvent} />
       <section
-        className={`container background-image${normalizedCtaPosition === 'bottom' ? ' template1-bottom-layout' : ''}`}
+        className={`container background-image${normalizedCtaPosition === 'bottom' ? ' template1-bottom-layout' : ''}${emailCaptureEnabled ? ' has-inline-email' : ''}`}
       >
         <RotatingBackground
           images={images}
@@ -50,7 +53,7 @@ export default function Template1View({ slug, config }: Props) {
           ) : null}
 
           {normalizedCtaPosition === 'top' ? (
-            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
+            cta
           ) : null}
 
           <p
@@ -72,7 +75,7 @@ export default function Template1View({ slug, config }: Props) {
           </p>
 
           {normalizedCtaPosition === 'between_title_and_info' ? (
-            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
+            cta
           ) : null}
 
           <p
@@ -94,7 +97,7 @@ export default function Template1View({ slug, config }: Props) {
           </p>
 
           {normalizedCtaPosition === 'between_info_and_badge' ? (
-            <WhatsAppButton slug={slug} config={config} externalTriggerEvent={sharedTriggerEvent} />
+            cta
           ) : null}
 
           {badgeText ? (
@@ -116,11 +119,7 @@ export default function Template1View({ slug, config }: Props) {
 
         {normalizedCtaPosition === 'bottom' ? (
           <div className="template1-bottom-cta-slot">
-            <WhatsAppButton
-              slug={slug}
-              config={config}
-              externalTriggerEvent={sharedTriggerEvent}
-            />
+            {cta}
           </div>
         ) : null}
       </section>

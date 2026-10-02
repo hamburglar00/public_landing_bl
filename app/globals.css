@@ -2159,6 +2159,64 @@ select {
   }
 }
 
+/* Captura opcional en línea: reserva espacio sin agrandar el alto de la landing. */
+.inline-email-capture {
+  width: min(85vw, 340px);
+  max-width: 100%;
+  margin: 6px auto 0;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.inline-email-capture input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font: 400 14px/1.2 system-ui, sans-serif;
+  outline-offset: 2px;
+}
+
+.inline-email-capture input::placeholder {
+  color: rgba(255, 255, 255, 0.8);
+  font-style: italic;
+}
+
+.inline-email-capture small {
+  display: block;
+  min-height: 14px;
+  color: #ffb4b4;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.has-inline-email .whatsapp-button,
+.has-inline-email .cta { margin-top: 2px; }
+.template1-bottom-cta-slot { flex-direction: column; align-items: center; }
+.container.background-image.has-inline-email { min-height: 100svh; height: 100svh; }
+.container.background-image.has-inline-email .content { padding-top: 8px; padding-bottom: 8px; }
+.container.background-image.has-inline-email .logo { width: min(35vw, 150px); height: min(16svh, 110px); margin-bottom: 4px; }
+.container.background-image.has-inline-email .title { margin: 4px 0 6px; }
+.container.background-image.has-inline-email .subtitle { margin-top: 10px; }
+.container.background-image.has-inline-email .description { margin: 10px 0 8px; }
+.container.background-image.has-inline-email.template1-bottom-layout { --cta-thumb-frame-height: 63svh; }
+.lp .artboard.has-inline-email { --cta-thumb-frame-height: 63svh; }
+.lp .artboard.has-inline-email .inline-email-capture { width: 100%; }
+
+@media (max-width: 390px) {
+  .has-inline-email .inline-email-capture input { font-size: 12px; }
+}
+
+@media (max-height: 720px) {
+  .container.background-image.has-inline-email.template1-bottom-layout,
+  .lp .artboard.has-inline-email { --cta-thumb-frame-height: 55svh; }
+  .container.background-image.has-inline-email .subtitle { margin-top: 5px; }
+  .container.background-image.has-inline-email .description { margin: 5px 0; }
+}
+
 @media (min-width: 431px) {
   .container.background-image.template1-bottom-layout,
   .lp .artboard {

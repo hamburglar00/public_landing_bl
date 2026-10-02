@@ -2,6 +2,7 @@ import CtaClickDispatcher from '@/components/CtaClickDispatcher';
 import FrameBackgroundTemplate2 from '@/components/FrameBackgroundTemplate2';
 import SocialProofRotator from '@/components/SocialProofRotator';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import InlineEmailCapture from '@/components/InlineEmailCapture';
 import type { LandingConfig } from '@/lib/landing/types';
 
 type Props = {
@@ -59,7 +60,7 @@ export default function Template2View({ slug, config }: Props) {
     <main className="lp">
       <CtaClickDispatcher eventName={sharedTriggerEvent} />
       <section className="phone-view">
-        <div className="artboard">
+        <div className={`artboard${config.emailCapture?.enabled === true ? ' has-inline-email' : ''}`}>
           <div className="frame">
             <FrameBackgroundTemplate2
               images={images}
@@ -113,6 +114,7 @@ export default function Template2View({ slug, config }: Props) {
             </div>
           </div>
 
+          {config.emailCapture?.enabled === true ? <InlineEmailCapture /> : null}
           <WhatsAppButton
             slug={slug}
             config={config}

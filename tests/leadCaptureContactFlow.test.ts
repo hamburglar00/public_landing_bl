@@ -12,7 +12,7 @@ test('el formulario opcional no dispara Contact hasta continuar u omitir', () =>
   assert.match(source, /setLeadCaptureOpen\(true\);\s*return;/);
   assert.match(source, /continueFromLeadCapture\(capture: LeadCaptureValues \| null\)/);
   assert.match(source, /void handleClick\(capture\)/);
-  assert.match(source, /onSubmit=\{\(event\) => \{\s*event\.preventDefault\(\);\s*continueFromLeadCapture\(leadCaptureForm\);/s);
+  assert.match(source, /onSubmit=\{\(event\) => \{\s*event\.preventDefault\(\);\s*continueFromLeadCapture\(leadCaptureForm\);/);
   assert.match(source, /aria-label="Omitir formulario e ir a WhatsApp"/);
   assert.equal((source.match(/window\.fbq\(/g) ?? []).length, 1);
   assert.match(source, /test_event_code: testEventCode \|\| undefined/);

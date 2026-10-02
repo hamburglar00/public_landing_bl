@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig } from '@/lib/landing/types';
+import { validInlineEmail } from '@/lib/tracking/inlineEmail';
 import {
   buildTrackingStorageKey,
   buildTrackingStorageNamespace
@@ -735,6 +736,18 @@ export default function WhatsAppButton({
       leadCaptureFields.phone === true ||
       leadCaptureFields.email === true);
 
+  function readInlineEmail() {
+    if (config.emailCapture?.enabled !== true || typeof document === 'undefined') return '';
+    const input = document.querySelector<HTMLInputElement>('[data-inline-email-input]');
+    if (!input) return '';
+    const value = input.value.trim();
+    const validEmail = validInlineEmail(value);
+    const error = document.querySelector<HTMLElement>('[data-inline-email-error]');
+    if (error) error.textContent = value && !validEmail
+      ? 'Email inválido. Podés seguir a WhatsApp.' : '';
+    return validEmail;
+  }
+
   function closeLeadCaptureModal() {
     setLeadCaptureOpen(false);
     if (typeof document !== 'undefined') {
@@ -749,6 +762,10 @@ export default function WhatsAppButton({
 
   function handlePrimaryClick() {
     if (leadCaptureEnabled && !clickLockRef.current && !isLoading && !isDisabled) {
+      const inlineEmail = readInlineEmail();
+      if (leadCaptureFields.email === true && config.emailCapture?.enabled === true) {
+        setLeadCaptureForm((prev) => ({ ...prev, email: inlineEmail }));
+      }
       setLeadCaptureOpen(true);
       return;
     }
@@ -790,9 +807,13 @@ export default function WhatsAppButton({
         testEventCode,
         deviceType
       } = prepared;
+      const inlineEmail = readInlineEmail();
+      const safeCaptureValues = leadCaptureValues && config.emailCapture?.enabled === true
+        ? { ...leadCaptureValues, email: validInlineEmail(String(leadCaptureValues.email || '')) }
+        : leadCaptureValues;
       const enrichedIdentity = applyLeadCaptureToIdentity(
-        identity,
-        leadCaptureValues,
+        inlineEmail ? { ...identity, emailRaw: inlineEmail, email: normalizeEmail(inlineEmail) } : identity,
+        safeCaptureValues,
         config.tracking.phoneCountryCode || '54'
       );
       const emailRaw = enrichedIdentity.emailRaw;
@@ -809,7 +830,7 @@ export default function WhatsAppButton({
           : '';
       const formEmail =
         hasLeadCaptureForm && captureFields.email
-          ? normalizeEmail(leadCaptureValues?.email || '')
+          ? normalizeEmail(safeCaptureValues?.email || '')
           : '';
       const formPhoneRaw =
         hasLeadCaptureForm && captureFields.phone
