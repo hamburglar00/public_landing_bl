@@ -14,7 +14,7 @@ export default function InlineEmailCapture() {
           <path d="m3.5 7 8.5 6 8.5-6" />
         </svg>
         <label className="inline-email-capture__hint" htmlFor="inline-email-input">
-          Ingresa tu email para desbloquear un bono especial
+          Ingresa tu email para desbloquear un bono
         </label>
         <input
           data-inline-email-input
