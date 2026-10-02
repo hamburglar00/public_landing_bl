@@ -13,18 +13,15 @@ export default function InlineEmailCapture() {
           <rect x="2.5" y="5" width="19" height="14" rx="2" />
           <path d="m3.5 7 8.5 6 8.5-6" />
         </svg>
-        <label className="inline-email-capture__hint" htmlFor="inline-email-input">
-          Ingresa tu email para desbloquear un bono
-        </label>
         <input
           data-inline-email-input
-          id="inline-email-input"
           type="email"
           inputMode="email"
           autoComplete="email"
           maxLength={254}
+          aria-label="Email para desbloquear un bono"
           aria-describedby="inline-email-error"
-          placeholder="Tu email"
+          placeholder="Ingresa tu email para desbloquear un bono"
           onChange={() => setError('')}
           onBlur={(event) => {
             const value = event.currentTarget.value.trim();
