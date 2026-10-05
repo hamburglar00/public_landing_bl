@@ -115,6 +115,8 @@ export type LandingPhoneResponse = {
   landingId: string;
   landingName: string;
   phoneId?: number;
+  gerenciaSelectionMode?: 'weighted_random' | 'weighted_quota' | 'fair';
+  assignmentReservationId?: string | null;
   phoneMode: string;
   fairCriterion?: string;
   phoneKind: string;

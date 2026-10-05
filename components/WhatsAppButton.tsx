@@ -924,7 +924,8 @@ export default function WhatsAppButton({
             const notifyBody = JSON.stringify({
               landingName: phoneData?.landingName || config.name,
               phoneId,
-              phone
+              phone,
+              reservationId: phoneData?.assignmentReservationId || undefined
             });
 
             void fetch(notifyUrl, {
