@@ -59,10 +59,12 @@ export default function Template6View({ slug, config }: Props) {
                 <p className="template6__caption">{card?.text?.trim() || `Opción ${index + 1}`}</p>
                 <button type="button" className="template6__cta" data-cta-trigger-event={triggerEvent} aria-label={label}>
                   <span>{label}</span>
-                  <svg className="template6__cta-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-                    <path fill="#25D366" d={WHATSAPP_GREEN_PATH} />
-                    <path fill="#FFFFFF" d={WHATSAPP_WHITE_PATH} />
-                  </svg>
+                  {cover?.showWhatsAppLogo !== false ? (
+                    <svg className="template6__cta-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                      <path fill="#25D366" d={WHATSAPP_GREEN_PATH} />
+                      <path fill="#FFFFFF" d={WHATSAPP_WHITE_PATH} />
+                    </svg>
+                  ) : null}
                 </button>
               </article>
             );

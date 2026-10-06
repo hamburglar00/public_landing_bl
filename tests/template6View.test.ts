@@ -40,6 +40,7 @@ for (const [grid, count] of [['2x1', 2], ['2x2', 4], ['2x3', 6]] as const) {
     assert.equal(html.split('data-cta-trigger-event="lp:template6:cta:cover"').length - 1, count);
     assert.match(html, /Título/);
     assert.match(html, /Elegir/);
+    assert.equal(html.split('class="template6__cta-icon"').length - 1, count);
     assert.match(html, /class="template6__background"/);
     assert.match(html, /cover\.avif/);
     if (count < 6) assert.doesNotMatch(html, /card-6\.avif/);
@@ -49,4 +50,23 @@ for (const [grid, count] of [['2x1', 2], ['2x2', 4], ['2x3', 6]] as const) {
 test('motor clásico conserva la portada sin fondo cuando no se configuró uno', () => {
   const html = renderToStaticMarkup(createElement(Template6View, { slug: 'cover', config: baseConfig }));
   assert.doesNotMatch(html, /class="template6__background"/);
+});
+
+test('motor clásico oculta el SVG de todos los CTA cuando se desactiva', () => {
+  const config: LandingConfig = {
+    ...baseConfig,
+    content: {
+      ...baseConfig.content!,
+      template6: {
+        grid: '2x2',
+        showWhatsAppLogo: false,
+        cards: [{ ctaText: 'Elegir' }, {}, {}, {}],
+      },
+    },
+  };
+  const html = renderToStaticMarkup(createElement(Template6View, { slug: 'cover', config }));
+  assert.equal(html.split('class="template6__cta"').length - 1, 4);
+  assert.doesNotMatch(html, /class="template6__cta-icon"/);
+  assert.match(html, /Elegir/);
+  assert.match(html, /Abrir WhatsApp/);
 });

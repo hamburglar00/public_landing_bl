@@ -52,6 +52,7 @@ export type LandingConfig = {
     };
     template6?: {
       grid?: '2x1' | '2x2' | '2x3';
+      showWhatsAppLogo?: boolean;
       backgroundImageUrl?: string;
       headerText?: string;
       footerText?: string;
