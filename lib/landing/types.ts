@@ -50,6 +50,13 @@ export type LandingConfig = {
       profileImageUrl?: string;
       backgroundImageUrl?: string;
     };
+    template6?: {
+      grid?: '2x1' | '2x2' | '2x3';
+      backgroundImageUrl?: string;
+      headerText?: string;
+      footerText?: string;
+      cards?: Array<{ imageUrl?: string; text?: string; ctaText?: string }>;
+    };
   };
   typography?: {
     fontFamily: 'system' | string;

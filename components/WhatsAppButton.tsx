@@ -636,6 +636,28 @@ export default function WhatsAppButton({
     config.interactions?.whatsappPrefillText
   ]);
 
+  useEffect(() => {
+    if (config.layout?.template !== 6) return;
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      if (noPhoneTimeoutRef.current) {
+        clearTimeout(noPhoneTimeoutRef.current);
+        noPhoneTimeoutRef.current = null;
+      }
+      clickLockRef.current = false;
+      setIsLoading(false);
+      setIsDisabled(false);
+      preparedClickRef.current = createPreparedClickContext();
+      phonePromiseRef.current = null;
+      void ensurePhonePromise();
+    };
+
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, config.layout?.template, config.tracking.ctaDestination]);
+
   // Inicializa _fbc/_fbp y parametros del SDK oficial de Meta en cuanto carga la landing.
   useEffect(() => {
     if (typeof window === 'undefined') return;
