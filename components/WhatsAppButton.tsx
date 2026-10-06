@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
+import { notifyTemplate6CardClick } from '@/lib/landing/notifyTemplate6CardClick';
 import type { LandingConfig } from '@/lib/landing/types';
 import { validInlineEmail } from '@/lib/tracking/inlineEmail';
 import {
@@ -508,7 +509,7 @@ export default function WhatsAppButton({
   const clickLockRef = useRef(false);
   const noPhoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStartOnceRef = useRef(false);
-  const handleClickRef = useRef<(leadCaptureValues?: LeadCaptureValues | null) => Promise<void>>(async () => {});
+  const handleClickRef = useRef<(leadCaptureValues?: LeadCaptureValues | null, cardIndex?: number) => Promise<void>>(async () => {});
 
   // Asegura una única llamada a getLandingPhone por slug y la reutiliza entre prewarm y click
   function ensurePhonePromise() {
@@ -804,11 +805,14 @@ export default function WhatsAppButton({
     return () => document.body.classList.remove('public-lead-capture-open');
   }, [leadCaptureOpen]);
 
-  async function handleClick(leadCaptureValues?: LeadCaptureValues | null) {
+  async function handleClick(leadCaptureValues?: LeadCaptureValues | null, cardIndex?: number) {
     if (clickLockRef.current || isLoading || isDisabled) return;
 
     clickLockRef.current = true;
     setIsLoading(true);
+    if (config.layout?.template === 6 && cardIndex !== undefined) {
+      notifyTemplate6CardClick(config.id, cardIndex);
+    }
     const tapStartedAt = Date.now();
 
     try {
@@ -1051,8 +1055,9 @@ export default function WhatsAppButton({
 
   useEffect(() => {
     if (!externalTriggerEvent || typeof window === 'undefined') return;
-    const listener = () => {
-      void handleClickRef.current();
+    const listener = (event: Event) => {
+      const cardIndex = event instanceof CustomEvent ? event.detail?.cardIndex : undefined;
+      void handleClickRef.current(undefined, cardIndex);
     };
     window.addEventListener(externalTriggerEvent, listener);
     return () => window.removeEventListener(externalTriggerEvent, listener);

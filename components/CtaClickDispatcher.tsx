@@ -16,7 +16,10 @@ export default function CtaClickDispatcher({ eventName }: Props) {
       if (!trigger) return;
       if (trigger.dataset.ctaTriggerEvent !== eventName) return;
 
-      window.dispatchEvent(new Event(eventName));
+      const cardIndex = Number(trigger.dataset.cardIndex);
+      window.dispatchEvent(Number.isInteger(cardIndex) && cardIndex >= 1 && cardIndex <= 6
+        ? new CustomEvent(eventName, { detail: { cardIndex } })
+        : new Event(eventName));
     };
 
     document.addEventListener('click', listener);

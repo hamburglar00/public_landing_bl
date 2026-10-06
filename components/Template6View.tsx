@@ -57,7 +57,7 @@ export default function Template6View({ slug, config }: Props) {
                   ) : null}
                 </div>
                 <p className="template6__caption">{card?.text?.trim() || `Opción ${index + 1}`}</p>
-                <button type="button" className="template6__cta" data-cta-trigger-event={triggerEvent} aria-label={label}>
+                <button type="button" className="template6__cta" data-cta-trigger-event={triggerEvent} data-card-index={index + 1} aria-label={label}>
                   <span>{label}</span>
                   {cover?.showWhatsAppLogo !== false ? (
                     <svg className="template6__cta-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">

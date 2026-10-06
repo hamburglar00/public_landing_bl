@@ -38,6 +38,10 @@ for (const [grid, count] of [['2x1', 2], ['2x2', 4], ['2x3', 6]] as const) {
     const html = renderToStaticMarkup(createElement(Template6View, { slug: 'cover', config }));
     assert.equal(html.split('class="template6__card"').length - 1, count);
     assert.equal(html.split('data-cta-trigger-event="lp:template6:cta:cover"').length - 1, count);
+    for (let index = 1; index <= count; index++) {
+      assert.match(html, new RegExp(`data-card-index="${index}"`));
+    }
+    assert.doesNotMatch(html, new RegExp(`data-card-index="${count + 1}"`));
     assert.match(html, /Título/);
     assert.match(html, /Elegir/);
     assert.equal(html.split('class="template6__cta-icon"').length - 1, count);
