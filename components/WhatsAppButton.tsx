@@ -5,6 +5,7 @@ import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import { notifyTemplate6CardClick } from '@/lib/landing/notifyTemplate6CardClick';
 import type { LandingConfig } from '@/lib/landing/types';
 import { validInlineEmail } from '@/lib/tracking/inlineEmail';
+import { getOrCreateDeviceId } from '@/lib/reyDeAses/deviceId';
 import {
   buildTrackingStorageKey,
   buildTrackingStorageNamespace
@@ -27,12 +28,14 @@ type Props = {
     | 'default'
     | 'template1'
     | 'template2'
+    | 'template7'
     | 'template3'
     | 'template4'
     | 'template5';
   autoStart?: boolean;
   hideButton?: boolean;
   externalTriggerEvent?: string;
+  template7Name?: string;
 };
 
 type FbqFn = (command: string, ...args: unknown[]) => void;
@@ -49,6 +52,12 @@ type LeadCaptureValues = {
   lastName?: string;
   phone?: string;
   email?: string;
+};
+type AtrioSelection = {
+  atrioClientId: string;
+  atrioId: string;
+  atrioSlug: string;
+  atrioRedirectUrl?: string;
 };
 type PreparedClickContext = {
   promoCode: string;
@@ -105,7 +114,7 @@ function buildMessage(promoCode: string, whatsappPrefillText?: string) {
 }
 
 function isAtrioDestination(config: LandingConfig) {
-  return String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
+  return config.layout?.template === 7 || String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
 }
 
 function buildAtrioRedirectUrl(
@@ -486,7 +495,8 @@ export default function WhatsAppButton({
   templateVariant = 'default',
   autoStart = false,
   hideButton = false,
-  externalTriggerEvent
+  externalTriggerEvent,
+  template7Name
 }: Props) {
   const storageNamespace = buildTrackingStorageNamespace(
     config.tracking.pixelId,
@@ -495,8 +505,12 @@ export default function WhatsAppButton({
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
+  const [template7Error, setTemplate7Error] = useState('');
   const [leadCaptureForm, setLeadCaptureForm] = useState<LeadCaptureValues>({});
   const phonePromiseRef = useRef<Promise<Awaited<ReturnType<typeof getLandingPhone>> | null> | null>(null);
+  const atrioPromiseRef = useRef<Promise<AtrioSelection | null> | null>(null);
+  const template7DeviceIdRef = useRef('');
+  const template7ContactSentRef = useRef(false);
   const metaTrackingRef = useRef<MetaTrackingParams>({
     fbc: '',
     fbp: '',
@@ -520,6 +534,66 @@ export default function WhatsAppButton({
         .catch(() => null);
     }
     return phonePromiseRef.current;
+  }
+
+  function ensureAtrioPromise(): Promise<AtrioSelection | null> {
+    if (atrioPromiseRef.current) return atrioPromiseRef.current;
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!baseUrl || !anonKey) return Promise.resolve(null);
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/functions/v1/landing-atrio?name=${encodeURIComponent(slug)}`;
+    atrioPromiseRef.current = fetch(endpoint, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` }, cache: 'no-store'
+    }).then(async (response) => {
+      if (!response.ok) return null;
+      const data: unknown = await response.json();
+      if (!data || typeof data !== 'object') return null;
+      const value = data as Record<string, unknown>;
+      const atrioClientId = String(value.atrioClientId || value.atrio_client_id || '');
+      const atrioId = String(value.atrioId || value.atrio_id || '');
+      const atrioSlug = String(value.atrioSlug || value.atrio_slug || '');
+      if (!atrioClientId || !atrioId || !atrioSlug) return null;
+      return { atrioClientId, atrioId, atrioSlug, atrioRedirectUrl: String(value.atrioRedirectUrl || '') };
+    }).catch(() => null);
+    return atrioPromiseRef.current;
+  }
+
+  function notifyAtrioClick(selection: AtrioSelection) {
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!baseUrl || !anonKey) return;
+    void fetch(`${baseUrl.replace(/\/+$/, '')}/functions/v1/atrio-click`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      body: JSON.stringify({ landingName: slug, atrioClientId: selection.atrioClientId }),
+      keepalive: true
+    }).catch(() => {});
+  }
+
+  async function startTemplate7Gateway(name: string, deviceId: string, promoCode: string, selection: AtrioSelection, fbp: string, fbc: string): Promise<string> {
+    const params = getQueryParamsSnapshot();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 18000);
+    try {
+      const response = await fetch('/api/rey-de-ases/start', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        body: JSON.stringify({
+          landing_id: config.id, landing_slug: slug, name, device_id: deviceId,
+          atrio_client_id: selection.atrioClientId, advisor_id: selection.atrioId, advisor_slug: selection.atrioSlug,
+          promo_code: promoCode,
+          attribution: {
+            utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
+            utm_campaign: params.get('utm_campaign') || '', utm_content: params.get('utm_content') || '',
+            utm_term: params.get('utm_term') || '', fbp, fbc
+          }
+        })
+      });
+      if (!response.ok) throw new Error('gateway unavailable');
+      const result: unknown = await response.json();
+      if (!result || typeof result !== 'object' || typeof (result as Record<string, unknown>).handoff_url !== 'string') throw new Error('invalid handoff');
+      return (result as { handoff_url: string }).handoff_url;
+    } finally { clearTimeout(timer); }
   }
 
   function createPreparedClickContext(): PreparedClickContext {
@@ -580,6 +654,7 @@ export default function WhatsAppButton({
 
     if (isAtrioDestination(config)) {
       phonePromiseRef.current = null;
+      if (templateVariant === 'template7') void ensureAtrioPromise();
       return () => {
         cancelled = true;
       };
@@ -753,6 +828,7 @@ export default function WhatsAppButton({
   const leadCaptureFields = config.leadCapture?.fields ?? {};
   const leadCaptureEnabled =
     config.leadCapture?.enabled === true &&
+    templateVariant !== 'template7' &&
     !autoStart &&
     (leadCaptureFields.firstName === true ||
       leadCaptureFields.lastName === true ||
@@ -784,6 +860,11 @@ export default function WhatsAppButton({
   }
 
   function handlePrimaryClick() {
+    if (templateVariant === 'template7') {
+      if (!template7Name?.trim()) return;
+      void handleClick({ firstName: template7Name.trim() });
+      return;
+    }
     if (leadCaptureEnabled && !clickLockRef.current && !isLoading && !isDisabled) {
       const inlineEmail = readInlineEmail();
       if (leadCaptureFields.email === true && config.emailCapture?.enabled === true) {
@@ -807,6 +888,8 @@ export default function WhatsAppButton({
 
   async function handleClick(leadCaptureValues?: LeadCaptureValues | null, cardIndex?: number) {
     if (clickLockRef.current || isLoading || isDisabled) return;
+    if (templateVariant === 'template7' && !String(leadCaptureValues?.firstName || '').trim()) return;
+    if (templateVariant === 'template7') setTemplate7Error('');
 
     clickLockRef.current = true;
     setIsLoading(true);
@@ -844,7 +927,9 @@ export default function WhatsAppButton({
       );
       const emailRaw = enrichedIdentity.emailRaw;
       const phoneRaw = enrichedIdentity.phoneRaw;
-      const captureFields = config.leadCapture?.fields ?? {};
+      const captureFields = templateVariant === 'template7'
+        ? { ...config.leadCapture?.fields, firstName: true }
+        : config.leadCapture?.fields ?? {};
       const hasLeadCaptureForm = Boolean(leadCaptureValues);
       const formFn =
         hasLeadCaptureForm && captureFields.firstName
@@ -878,10 +963,24 @@ export default function WhatsAppButton({
       const clientIpAddress = metaTracking.clientIpAddress;
       const clientIpIssuedAt = metaTracking.clientIpIssuedAt;
       const clientIpProof = metaTracking.clientIpProof;
-      const shouldSkipContact = testEventCode
+      const gatewayMode = templateVariant === 'template7';
+      const shouldSkipContact = gatewayMode && template7ContactSentRef.current ? true : testEventCode
         ? false
         : wasContactRecentlySent(storageNamespace, slug, externalId);
       const atrioMode = isAtrioDestination(config);
+
+      let atrioSelection: AtrioSelection | null = null;
+      let deviceId = '';
+      if (gatewayMode) {
+        atrioSelection = await waitWithTimeout(ensureAtrioPromise(), 1500);
+        if (!atrioSelection) {
+          atrioPromiseRef.current = null;
+          atrioSelection = await waitWithTimeout(ensureAtrioPromise(), 2500);
+        }
+        if (!atrioSelection) throw new Error('advisor unavailable');
+        deviceId = template7DeviceIdRef.current || getOrCreateDeviceId();
+        template7DeviceIdRef.current = deviceId;
+      }
 
       // Usa el número pre-cargado; si viene lento, hace un reintento corto.
       let phoneData = atrioMode ? null : await waitWithTimeout(ensurePhonePromise(), 1500);
@@ -896,7 +995,7 @@ export default function WhatsAppButton({
         phoneData?.phone || '',
         config.tracking.phoneCountryCode || '54'
       );
-      const redirectUrl = atrioMode
+      const redirectUrl = gatewayMode ? '' : atrioMode
         ? buildAtrioRedirectUrl(
           config.tracking.atrioRedirectUrl,
           promoCode,
@@ -905,7 +1004,7 @@ export default function WhatsAppButton({
         : `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       const workspaceCurrency = resolveWorkspaceCurrency(config);
 
-      if ((!atrioMode && !phone) || (atrioMode && !redirectUrl)) {
+      if ((!atrioMode && !phone) || (atrioMode && !gatewayMode && !redirectUrl)) {
         setIsDisabled(true);
         if (noPhoneTimeoutRef.current) {
           clearTimeout(noPhoneTimeoutRef.current);
@@ -917,6 +1016,8 @@ export default function WhatsAppButton({
         clickLockRef.current = false;
         return;
       }
+
+      if (gatewayMode && atrioSelection) notifyAtrioClick(atrioSelection);
 
       // Pixel Contact con eventID y parámetros, solo cuando hay teléfono válido.
       try {
@@ -1006,11 +1107,12 @@ export default function WhatsAppButton({
         source: 'main_button',
         source_platform: 'landing',
         cta_destination: atrioMode ? 'atrio' : 'whatsapp',
-        redirect_channel: atrioMode ? 'atrio' : 'whatsapp',
-        atrio_redirect_url: atrioMode ? String(config.tracking.atrioRedirectUrl || '').trim() : undefined,
-        atrio_client_id: atrioMode ? String(config.tracking.atrioClientId || '').trim() : undefined,
-        atrio_id: atrioMode ? String(config.tracking.atrioId || '').trim() : undefined,
-        atrio_slug: atrioMode ? String(config.tracking.atrioSlug || '').trim() : undefined,
+        redirect_channel: gatewayMode ? 'rey_de_ases_gateway' : atrioMode ? 'atrio' : 'whatsapp',
+        gateway_app_id: gatewayMode ? 'reydeases_gateway' : undefined,
+        atrio_redirect_url: atrioMode ? (atrioSelection?.atrioRedirectUrl || String(config.tracking.atrioRedirectUrl || '').trim()) : undefined,
+        atrio_client_id: atrioMode ? (atrioSelection?.atrioClientId || String(config.tracking.atrioClientId || '').trim()) : undefined,
+        atrio_id: atrioMode ? (atrioSelection?.atrioId || String(config.tracking.atrioId || '').trim()) : undefined,
+        atrio_slug: atrioMode ? (atrioSelection?.atrioSlug || String(config.tracking.atrioSlug || '').trim()) : undefined,
         brand: config.name,
         landing_id: config.id,
         landing_name: config.name,
@@ -1038,12 +1140,19 @@ export default function WhatsAppButton({
 
       if (!shouldSkipContact) {
         markContactSent(storageNamespace, slug, externalId);
+        if (gatewayMode) template7ContactSentRef.current = true;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 180));
-      window.location.assign(redirectUrl);
+      if (gatewayMode && atrioSelection) {
+        const handoffUrl = await startTemplate7Gateway(formFn, deviceId, promoCode, atrioSelection, fbp, fbc);
+        window.location.assign(handoffUrl);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 180));
+        window.location.assign(redirectUrl);
+      }
     } catch {
       clickLockRef.current = false;
+      if (templateVariant === 'template7') setTemplate7Error('No pudimos abrir tu cuenta ahora. Por favor, intentá de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -1242,6 +1351,24 @@ export default function WhatsAppButton({
           <span>{isDisabled ? 'Sin numero disponible' : isLoading ? 'Abriendo...' : 'ENTRAR POR WHATSAPP'}</span>
         </button>
         {leadCaptureModal}
+      </>
+    );
+  }
+
+  if (templateVariant === 'template7') {
+    return (
+      <>
+      <button
+        type="button"
+        className="template7__cta"
+        onClick={handlePrimaryClick}
+        disabled={!template7Name?.trim() || isLoading || isDisabled}
+        aria-busy={isLoading}
+        style={ctaStyle}
+      >
+        {isDisabled ? 'No disponible' : isLoading ? 'Abriendo...' : ctaText}
+      </button>
+      {template7Error ? <p className="template7__error" role="alert">{template7Error}</p> : null}
       </>
     );
   }

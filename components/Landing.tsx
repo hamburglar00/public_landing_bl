@@ -7,6 +7,7 @@ import Template3View from '@/components/Template3View';
 import Template4View from '@/components/Template4View';
 import Template5View from '@/components/Template5View';
 import Template6View from '@/components/Template6View';
+import Template7View from '@/components/Template7View';
 import type { LandingConfig } from '@/lib/landing/types';
 
 type Props = {
@@ -20,6 +21,7 @@ export default function Landing({ slug, config }: Props) {
   const isTemplate4 = config.layout?.template === 4;
   const isTemplate5 = config.layout?.template === 5;
   const isTemplate6 = config.layout?.template === 6;
+  const isTemplate7 = config.layout?.template === 7;
 
   const pixelBlock = config.tracking.pixelId ? (
     <>
@@ -90,6 +92,17 @@ export default function Landing({ slug, config }: Props) {
         {pixelBlock}
         <LandingPageViewTracker slug={slug} config={config} />
         <Template6View slug={slug} config={config} />
+        <PrivacyFooter config={config} />
+      </>
+    );
+  }
+
+  if (isTemplate7) {
+    return (
+      <>
+        {pixelBlock}
+        <LandingPageViewTracker slug={slug} config={config} />
+        <Template7View slug={slug} config={config} />
         <PrivacyFooter config={config} />
       </>
     );
