@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import FrameBackgroundTemplate7 from '@/components/FrameBackgroundTemplate7';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import type { LandingConfig } from '@/lib/landing/types';
+import { normalizeArgentinaWhatsapp } from '@/lib/landing/argentinaWhatsapp';
 
 type Props = {
   slug: string;
@@ -21,6 +22,8 @@ export function pickTemplate7ExampleName(random: () => number = Math.random) {
 
 export default function Template7View({ slug, config }: Props) {
   const [firstName, setFirstName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappWarning, setWhatsappWarning] = useState('');
   const [namePlaceholder, setNamePlaceholder] = useState('Ej.: Martín');
   useEffect(() => {
     setNamePlaceholder(`Ej.: ${pickTemplate7ExampleName()}`);
@@ -95,11 +98,41 @@ export default function Template7View({ slug, config }: Props) {
             value={firstName}
             onChange={(event) => setFirstName(event.target.value)}
           />
+          {config.template7Capture?.whatsapp === true ? (
+            <>
+              <label className="template7__label" htmlFor="template7-whatsapp">
+                WhatsApp <span>(opcional)</span>
+              </label>
+              <input
+                id="template7-whatsapp"
+                className="template7__input"
+                type="tel"
+                name="phone"
+                autoComplete="tel"
+                inputMode="tel"
+                maxLength={32}
+                placeholder="Ej.: 11 2345-6789"
+                value={whatsapp}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setWhatsapp(value);
+                  if (!value.trim() || normalizeArgentinaWhatsapp(value)) setWhatsappWarning('');
+                }}
+                onBlur={() => setWhatsappWarning(
+                  whatsapp.trim() && !normalizeArgentinaWhatsapp(whatsapp)
+                    ? 'No parece un WhatsApp argentino válido. Continuaremos sin guardarlo.'
+                    : ''
+                )}
+              />
+              {whatsappWarning ? <p className="template7__phone-warning" role="status">{whatsappWarning}</p> : null}
+            </>
+          ) : null}
           <WhatsAppButton
             slug={slug}
             config={config}
             templateVariant="template7"
             template7Name={firstName}
+            template7Phone={normalizeArgentinaWhatsapp(whatsapp)}
           />
         </form>
       </section>

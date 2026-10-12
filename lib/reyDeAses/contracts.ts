@@ -2,6 +2,7 @@ export type StartRequest = {
   landing_id: string;
   landing_slug: string;
   name: string;
+  phone?: string;
   device_id: string;
   atrio_client_id: string;
   advisor_id: string;
@@ -21,6 +22,20 @@ export type ResolvedPlayer = {
   advisor_slug: string;
   player_id: string;
   created: boolean;
+  device_id: string;
+  player_provider_account_id: string;
+  target_provider: "rey_de_ases";
+  provider_account_created: boolean;
+};
+
+export type PlayerResolveRequest = {
+  advisor: AssignedAdvisor;
+  deviceId: string;
+  name: string;
+  phone?: string;
+  landingId: string;
+  landingSlug: string;
+  promoCode: string;
 };
 
 export type Api2ResolveAccountRequest = {

@@ -1,4 +1,4 @@
-import type { AssignedAdvisor, Api2ResolveAccountRequest, HandoffResult, ReyAccount, ResolvedPlayer } from "./contracts";
+import type { AssignedAdvisor, Api2ResolveAccountRequest, HandoffResult, PlayerResolveRequest, ReyAccount, ResolvedPlayer } from "./contracts";
 import { isDeviceId } from "./deviceId";
 
 export class ReyIntegrationError extends Error {
@@ -53,15 +53,24 @@ export function api2Readiness(): "api2_not_configured" | "integration_pending" {
     : "api2_not_configured";
 }
 
-export async function resolveInternalChatPlayer(advisor: AssignedAdvisor, deviceId: string, name: string): Promise<ResolvedPlayer> {
+export async function resolveInternalChatPlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer> {
   const origin = configuredOrigin(process.env.INTERNAL_CHAT_ORIGIN);
-  const result = await postJson(origin, "/api/gateway/players/resolve", process.env.INTERNAL_CHAT_GATEWAY_API_KEY, {
-    advisor_id: advisor.advisorId,
-    advisor_slug: advisor.advisorSlug,
-    device_id: deviceId,
-    name,
+  const result = await postJson(origin, "/api/gateway/players/resolve", process.env.INTERNAL_CHAT_PLAYER_RESOLVE_KEY || process.env.INTERNAL_CHAT_GATEWAY_API_KEY, {
+    advisor_id: input.advisor.advisorId,
+    advisor_slug: input.advisor.advisorSlug,
+    device_id: input.deviceId,
+    name: input.name,
+    ...(input.phone ? { phone: input.phone } : {}),
+    landing_id: input.landingId,
+    landing_slug: input.landingSlug,
+    atrio_client_id: input.advisor.atrioClientId,
+    promo_code: input.promoCode,
+    target_provider: "rey_de_ases",
+    source: "landing_builder",
   });
-  if (result.advisor_id !== advisor.advisorId || result.advisor_slug !== advisor.advisorSlug || !isDeviceId(result.player_id) || typeof result.created !== "boolean") {
+  if (result.advisor_id !== input.advisor.advisorId || result.advisor_slug !== input.advisor.advisorSlug ||
+      result.device_id !== input.deviceId || !isDeviceId(result.player_id) || !isDeviceId(result.player_provider_account_id) ||
+      result.target_provider !== "rey_de_ases" || typeof result.created !== "boolean" || typeof result.provider_account_created !== "boolean") {
     throw new ReyIntegrationError("upstream_unavailable");
   }
   return result as ResolvedPlayer;

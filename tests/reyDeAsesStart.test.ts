@@ -10,6 +10,7 @@ const advisorId = "33333333-3333-4333-8333-333333333333";
 const deviceId = "44444444-4444-4444-8444-444444444444";
 const playerId = "55555555-5555-4555-8555-555555555555";
 const ownerId = "66666666-6666-4666-8666-666666666666";
+const providerAccountId = "77777777-7777-4777-8777-777777777777";
 
 const validPayload = {
   landing_id: landingId, landing_slug: "landing-7", name: "Martín", device_id: deviceId,
@@ -38,12 +39,19 @@ function dependencies(status: ReturnType<StartDependencies["api2Status"]> = null
         ? { id: clientId, user_id: ownerId, workspace_currency: "ARS", slug: "gera", atrio_id: advisorId } : null; },
     },
     api2Status() { calls.push("api2-readiness"); return status; },
-    async resolvePlayer(advisor, incomingDeviceId, name) {
+    async resolvePlayer(input) {
       calls.push("internal-chat");
-      assert.equal(advisor.advisorId, advisorId);
-      assert.equal(incomingDeviceId, deviceId);
-      assert.equal(name, "Martín");
-      return { advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: true };
+      assert.equal(input.advisor.advisorId, advisorId);
+      assert.equal(input.deviceId, deviceId);
+      assert.equal(input.name, "Martín");
+      assert.equal(input.landingId, landingId);
+      assert.equal(input.landingSlug, "landing-7");
+      assert.equal(input.promoCode, "LP-a1b2");
+      return {
+        advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: true,
+        device_id: deviceId, player_provider_account_id: providerAccountId,
+        target_provider: "rey_de_ases" as const, provider_account_created: true,
+      };
     },
     async resolveAccount(accountRequest) {
       calls.push("api2");
@@ -146,10 +154,20 @@ test("adaptadores usan contrato servidor-servidor y no exponen credenciales", as
     globalThis.fetch = async (input, init) => {
       assert.equal(String(input), "https://chat.example.com/api/gateway/players/resolve");
       assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer test-chat-key");
-      assert.deepEqual(JSON.parse(String(init?.body)), { advisor_id: advisorId, advisor_slug: "gera", device_id: deviceId, name: "Martín" });
-      return Response.json({ advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: true });
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        advisor_id: advisorId, advisor_slug: "gera", device_id: deviceId, name: "Martín",
+        landing_id: landingId, landing_slug: "landing-7", atrio_client_id: clientId,
+        promo_code: "LP-a1b2", target_provider: "rey_de_ases", source: "landing_builder",
+      });
+      return Response.json({
+        advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: true,
+        device_id: deviceId, player_provider_account_id: providerAccountId,
+        target_provider: "rey_de_ases", provider_account_created: true,
+      });
     };
-    const player = await resolveInternalChatPlayer(advisor, deviceId, "Martín");
+    const player = await resolveInternalChatPlayer({
+      advisor, deviceId, name: "Martín", landingId, landingSlug: "landing-7", promoCode: "LP-a1b2",
+    });
     globalThis.fetch = async (input, init) => {
       assert.equal(String(input), "https://gateway.example.com/api/handoffs");
       assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer test-gateway-key");

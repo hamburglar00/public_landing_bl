@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import type { AssignedAdvisor, Api2ResolveAccountRequest, HandoffResult, ReyAccount, ResolvedPlayer, StartRequest } from "./contracts";
+import type { AssignedAdvisor, Api2ResolveAccountRequest, HandoffResult, PlayerResolveRequest, ReyAccount, ResolvedPlayer, StartRequest } from "./contracts";
 import { isDeviceId } from "./deviceId";
 import { api2Readiness, createReyHandoff, resolveInternalChatPlayer, resolveReyAccount, ReyIntegrationError } from "./integrations.server";
+import { normalizeArgentinaWhatsapp } from "../landing/argentinaWhatsapp";
 
 type LandingRow = { id: string; name: string; user_id: string; workspace_currency: string; config: unknown; landing_config: unknown };
 type AssignmentRow = { landing_id: string; atrio_client_id: string; user_id: string };
@@ -17,7 +18,7 @@ export type StartDb = {
 export type StartDependencies = {
   db: StartDb;
   api2Status(): "api2_not_configured" | "integration_pending" | null;
-  resolvePlayer(advisor: AssignedAdvisor, deviceId: string, name: string): Promise<ResolvedPlayer>;
+  resolvePlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer>;
   resolveAccount(request: Api2ResolveAccountRequest): Promise<ReyAccount>;
   createHandoff(advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: ReyAccount): Promise<HandoffResult>;
 };
@@ -44,6 +45,8 @@ function parsePayload(value: unknown): StartRequest | null {
       !name || name.length > 80 || /[\x00-\x1f\x7f]/.test(name)) return null;
   const promo = typeof data.promo_code === "string" ? data.promo_code.trim() : "";
   if (!promo || promo.length > 128 || /[\x00-\x1f\x7f]/.test(promo)) return null;
+  if (data.phone !== undefined && (typeof data.phone !== "string" || data.phone.length > 32)) return null;
+  const phone = typeof data.phone === "string" ? normalizeArgentinaWhatsapp(data.phone) : "";
   const rawAttribution = data.attribution;
   if (rawAttribution !== undefined && (!rawAttribution || typeof rawAttribution !== "object" || Array.isArray(rawAttribution))) return null;
   const attribution: Record<string, string> = {};
@@ -56,7 +59,7 @@ function parsePayload(value: unknown): StartRequest | null {
     landing_id: String(data.landing_id), landing_slug: String(data.landing_slug), name,
     device_id: String(data.device_id), atrio_client_id: String(data.atrio_client_id),
     advisor_id: String(data.advisor_id), advisor_slug: String(data.advisor_slug),
-    promo_code: promo, attribution,
+    promo_code: promo, ...(phone ? { phone } : {}), attribution,
   };
 }
 
@@ -105,8 +108,12 @@ export async function handleReyStart(request: Request, deps: StartDependencies):
     const assigned: AssignedAdvisor = { atrioClientId: advisor.id, advisorId: advisor.atrio_id, advisorSlug: advisor.slug };
     const pending = deps.api2Status();
     if (pending) return json({ error: pending }, 503);
-    const player = await deps.resolvePlayer(assigned, payload.device_id, payload.name);
-    if (player.advisor_id !== assigned.advisorId || player.advisor_slug !== assigned.advisorSlug || !isDeviceId(player.player_id)) throw new ReyIntegrationError("upstream_unavailable");
+    const player = await deps.resolvePlayer({ advisor: assigned, deviceId: payload.device_id, name: payload.name,
+      ...(payload.phone ? { phone: payload.phone } : {}), landingId: landing.id, landingSlug: landing.name, promoCode: payload.promo_code });
+    if (player.advisor_id !== assigned.advisorId || player.advisor_slug !== assigned.advisorSlug || !isDeviceId(player.player_id) ||
+        player.device_id !== payload.device_id || !isDeviceId(player.player_provider_account_id) || player.target_provider !== "rey_de_ases") {
+      throw new ReyIntegrationError("upstream_unavailable");
+    }
     const account = await deps.resolveAccount({ external_user_id: player.player_id, name: payload.name, advisor_id: assigned.advisorId });
     if (!account.username || !account.password || account.platform !== "rey_de_ases") throw new ReyIntegrationError("upstream_unavailable");
     const handoff = await deps.createHandoff(assigned, payload.device_id, player, account);

@@ -104,6 +104,9 @@ export type LandingConfig = {
       email?: boolean;
     };
   };
+  template7Capture?: {
+    whatsapp?: boolean;
+  };
   emailCapture?: { enabled?: boolean };
   layout: {
     ctaPosition:

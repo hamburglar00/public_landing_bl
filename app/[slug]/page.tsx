@@ -23,6 +23,18 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
       return '';
     }
   })();
+  const atrioPrewarmScript = config.layout?.template === 7 && supabaseOrigin && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ? `(function(){var slug=${JSON.stringify(slug)};var base=${JSON.stringify(supabaseOrigin)};var key=${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)};window.__PUBLIC_LANDING_ATRIO_PROMISES=window.__PUBLIC_LANDING_ATRIO_PROMISES||{};if(window.__PUBLIC_LANDING_ATRIO_PROMISES[slug])return;var endpoint=base.replace(/\\\/+$/,"")+"/functions/v1/landing-atrio?name="+encodeURIComponent(slug);window.__PUBLIC_LANDING_ATRIO_PROMISES[slug]=fetch(endpoint,{headers:{apikey:key,Authorization:"Bearer "+key},cache:"no-store",keepalive:true}).then(function(response){if(!response.ok)return null;return response.json()}).then(function(value){if(!value||typeof value!=="object")return null;var atrioClientId=String(value.atrioClientId||value.atrio_client_id||"");var atrioId=String(value.atrioId||value.atrio_id||"");var atrioSlug=String(value.atrioSlug||value.atrio_slug||"");if(!atrioClientId||!atrioId||!atrioSlug)return null;return{atrioClientId:atrioClientId,atrioId:atrioId,atrioSlug:atrioSlug,atrioRedirectUrl:String(value.atrioRedirectUrl||value.atrio_redirect_url||"")}}).catch(function(){return null})})();`
+    : '';
+  const gatewayOrigin = (() => {
+    if (config.layout?.template !== 7) return '';
+    try {
+      const url = new URL(process.env.REY_GATEWAY_ORIGIN || '');
+      return url.protocol === 'https:' ? url.origin : '';
+    } catch {
+      return '';
+    }
+  })();
 
   return (
     <>
@@ -30,6 +42,13 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
         <>
           <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
           <link rel="dns-prefetch" href={supabaseOrigin} />
+        </>
+      ) : null}
+      {atrioPrewarmScript ? <script dangerouslySetInnerHTML={{ __html: atrioPrewarmScript }} /> : null}
+      {gatewayOrigin ? (
+        <>
+          <link rel="preconnect" href={gatewayOrigin} />
+          <link rel="dns-prefetch" href={gatewayOrigin} />
         </>
       ) : null}
       {config.tracking.pixelId ? (
