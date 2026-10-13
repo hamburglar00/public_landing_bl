@@ -101,7 +101,7 @@ function isTemplate7Landing(landing: LandingRow): boolean {
 function configuredProvider(landing: LandingRow): TargetProvider | null {
   const provider = rawConfig(landing).targetProvider;
   if (provider === undefined || provider === null) return "rey_de_ases";
-  return provider === "rey_de_ases" || provider === "multi_skin" || provider === "ases_del_norte" ? provider : null;
+  return provider === "rey_de_ases" || provider === "multi_skin" || provider === "ases_del_norte" || provider === "ganamos_net" ? provider : null;
 }
 
 function configuredSkin(landing: LandingRow, provider: TargetProvider): MultiSkinCode | null {
@@ -125,7 +125,9 @@ function demoAccount(landing: LandingRow, provider: TargetProvider): { deviceId:
   }
   const enabled = provider === "multi_skin"
     ? process.env.TEMPLATE7_DEMO_MULTI_SKIN_ENABLED === "true"
-    : process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED === "true";
+    : provider === "ases_del_norte"
+      ? process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED === "true"
+      : provider === "ganamos_net" && process.env.TEMPLATE7_DEMO_GANAMOS_NET_ENABLED === "true";
   return enabled ? { deviceId, account: { username: "", password: "", platform: provider, created: false, testingBypass: true }, testing: true } : null;
 }
 
@@ -258,7 +260,7 @@ function productionDb(): StartDb {
       const status = String(row.status) as ContextStatus;
       if (status !== "ok") return { status };
       const selectedProvider = row.target_provider;
-      if (selectedProvider !== "rey_de_ases" && selectedProvider !== "multi_skin" && selectedProvider !== "ases_del_norte") throw new Error("invalid provider");
+      if (selectedProvider !== "rey_de_ases" && selectedProvider !== "multi_skin" && selectedProvider !== "ases_del_norte" && selectedProvider !== "ganamos_net") throw new Error("invalid provider");
       return {
         status: "ok" as const, provider: selectedProvider,
         landing: { id: String(row.landing_id), name: String(row.landing_name), user_id: String(row.owner_user_id), workspace_currency: String(row.workspace_currency), config: row.landing_config_raw, landing_config: row.landing_config_published },

@@ -34,6 +34,8 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
         ? process.env.MULTI_SKIN_GATEWAY_ORIGIN
         : provider === 'ases_del_norte'
           ? process.env.ASES_DEL_NORTE_GATEWAY_ORIGIN
+          : provider === 'ganamos_net'
+            ? process.env.GANAMOS_NET_GATEWAY_ORIGIN
           : process.env.REY_GATEWAY_ORIGIN;
       const url = new URL(rawOrigin || '');
       return url.protocol === 'https:' ? url.origin : '';

@@ -1132,6 +1132,8 @@ export default function WhatsAppButton({
             ? 'multi_skin_gateway'
             : config.tracking.target_provider === 'ases_del_norte'
               ? 'ases_del_norte_gateway'
+              : config.tracking.target_provider === 'ganamos_net'
+                ? 'ganamos_net_gateway'
               : 'rey_de_ases_gateway'
           : atrioMode ? 'atrio' : 'whatsapp',
         gateway_app_id: gatewayMode
@@ -1139,6 +1141,8 @@ export default function WhatsAppButton({
             ? 'multi_skin_gateway'
             : config.tracking.target_provider === 'ases_del_norte'
               ? 'ases_del_norte_gateway'
+              : config.tracking.target_provider === 'ganamos_net'
+                ? 'ganamos_net_gateway'
               : 'reydeases_gateway'
           : undefined,
         atrio_redirect_url: atrioMode ? (atrioSelection?.atrioRedirectUrl || String(config.tracking.atrioRedirectUrl || '').trim()) : undefined,

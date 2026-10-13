@@ -1,4 +1,4 @@
-export type TargetProvider = "rey_de_ases" | "multi_skin" | "ases_del_norte";
+export type TargetProvider = "rey_de_ases" | "multi_skin" | "ases_del_norte" | "ganamos_net";
 export type MultiSkinCode = "ganamos_plus";
 
 export type StartRequest = {
