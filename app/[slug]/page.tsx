@@ -29,7 +29,13 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
   const gatewayOrigin = (() => {
     if (config.layout?.template !== 7) return '';
     try {
-      const url = new URL(process.env.REY_GATEWAY_ORIGIN || '');
+      const provider = config.tracking?.target_provider || 'rey_de_ases';
+      const rawOrigin = provider === 'multi_skin'
+        ? process.env.MULTI_SKIN_GATEWAY_ORIGIN
+        : provider === 'ases_del_norte'
+          ? process.env.ASES_DEL_NORTE_GATEWAY_ORIGIN
+          : process.env.REY_GATEWAY_ORIGIN;
+      const url = new URL(rawOrigin || '');
       return url.protocol === 'https:' ? url.origin : '';
     } catch {
       return '';

@@ -47,6 +47,7 @@ function dependencies(status: ReturnType<StartDependencies["api2Status"]> = null
       assert.equal(input.landingId, landingId);
       assert.equal(input.landingSlug, "landing-7");
       assert.equal(input.promoCode, "LP-a1b2");
+      assert.equal(input.targetProvider, "rey_de_ases");
       return {
         advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: true,
         device_id: deviceId, player_provider_account_id: providerAccountId,
@@ -55,11 +56,15 @@ function dependencies(status: ReturnType<StartDependencies["api2Status"]> = null
     },
     async resolveAccount(accountRequest) {
       calls.push("api2");
-      assert.deepEqual(accountRequest, { external_user_id: playerId, name: "Martín", advisor_id: advisorId });
+      assert.deepEqual(accountRequest, {
+        external_user_id: playerId, name: "Martín", advisor_id: advisorId,
+        advisor_slug: "gera", target_provider: "rey_de_ases",
+      });
       return { username: "secret-user", password: "secret-pass", platform: "rey_de_ases", created: true };
     },
-    async createHandoff(advisor, incomingDeviceId, player, account) {
+    async createHandoff(provider, advisor, incomingDeviceId, player, account) {
       calls.push("gateway");
+      assert.equal(provider, "rey_de_ases");
       assert.equal(advisor.advisorSlug, "gera");
       assert.equal(incomingDeviceId, deviceId);
       assert.equal(player.player_id, playerId);
@@ -139,6 +144,56 @@ test("con toda la cadena disponible el navegador recibe solo handoff_url", async
   assert.doesNotMatch(body, /secret-user|secret-pass|api_key/i);
 });
 
+test("el motor clasico deriva Ases del Norte desde la landing y usa solo el bypass allowlisted", async () => {
+  const oldEnabled = process.env.TEMPLATE7_DEMO_ENABLED;
+  const oldLandings = process.env.TEMPLATE7_DEMO_LANDING_IDS;
+  const oldDevice = process.env.TEMPLATE7_DEMO_DEVICE_ID;
+  const oldAses = process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED;
+  process.env.TEMPLATE7_DEMO_ENABLED = "true";
+  process.env.TEMPLATE7_DEMO_LANDING_IDS = landingId;
+  process.env.TEMPLATE7_DEMO_DEVICE_ID = deviceId;
+  process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED = "true";
+  const calls: string[] = [];
+  const deps: StartDependencies = {
+    db: {
+      async landing() { return { id: landingId, name: "landing-7", user_id: ownerId, workspace_currency: "ARS", config: { template: "template7", ctaDestination: "atrio", targetProvider: "ases_del_norte" }, landing_config: { layout: { template: 7 } } }; },
+      async blocked() { return false; },
+      async assignment() { return { landing_id: landingId, atrio_client_id: clientId, user_id: ownerId }; },
+      async advisor() { return { id: clientId, user_id: ownerId, workspace_currency: "ARS", slug: "gera", atrio_id: advisorId }; },
+    },
+    api2Status() { calls.push("api2"); return "integration_pending"; },
+    gatewayStatus(provider) { assert.equal(provider, "ases_del_norte"); return null; },
+    async resolvePlayer(input) {
+      calls.push("player");
+      assert.equal(input.targetProvider, "ases_del_norte");
+      return { advisor_id: advisorId, advisor_slug: "gera", player_id: playerId, created: false, device_id: deviceId, player_provider_account_id: providerAccountId, target_provider: "ases_del_norte", provider_account_created: true };
+    },
+    async resolveAccount() { throw new Error("API2 no debe ejecutarse en demo"); },
+    async createHandoff(provider, _advisor, _device, _player, _account, _skin, testing, promoCode) {
+      calls.push("handoff");
+      assert.equal(provider, "ases_del_norte");
+      assert.equal(testing, true);
+      assert.equal(promoCode, "LP-a1b2");
+      return { handoff_url: "https://ases.example/start?t=opaque", expires_at: "", binding_created: false, provider_username: "Acapulco" };
+    },
+    async linkProviderAccount(_advisor, _player, account) {
+      calls.push("link");
+      assert.equal(account.username, "Acapulco");
+      return { player_provider_account_id: providerAccountId, target_provider: "ases_del_norte", provider_username: "Acapulco", provider_external_account_id: null };
+    },
+  };
+  try {
+    const result = await handleReyStart(request(validPayload), deps);
+    assert.equal(result.status, 200);
+    assert.deepEqual(calls, ["player", "handoff", "link"]);
+  } finally {
+    if (oldEnabled === undefined) delete process.env.TEMPLATE7_DEMO_ENABLED; else process.env.TEMPLATE7_DEMO_ENABLED = oldEnabled;
+    if (oldLandings === undefined) delete process.env.TEMPLATE7_DEMO_LANDING_IDS; else process.env.TEMPLATE7_DEMO_LANDING_IDS = oldLandings;
+    if (oldDevice === undefined) delete process.env.TEMPLATE7_DEMO_DEVICE_ID; else process.env.TEMPLATE7_DEMO_DEVICE_ID = oldDevice;
+    if (oldAses === undefined) delete process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED; else process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED = oldAses;
+  }
+});
+
 test("adaptadores usan contrato servidor-servidor y no exponen credenciales", async () => {
   const originalFetch = globalThis.fetch;
   const oldChatOrigin = process.env.INTERNAL_CHAT_ORIGIN;
@@ -167,13 +222,15 @@ test("adaptadores usan contrato servidor-servidor y no exponen credenciales", as
     };
     const player = await resolveInternalChatPlayer({
       advisor, deviceId, name: "Martín", landingId, landingSlug: "landing-7", promoCode: "LP-a1b2",
+      targetProvider: "rey_de_ases",
     });
     globalThis.fetch = async (input, init) => {
       assert.equal(String(input), "https://gateway.example.com/api/handoffs");
       assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer test-gateway-key");
       assert.deepEqual(JSON.parse(String(init?.body)), {
         advisor_id: advisorId, advisor_slug: "gera", device_id: deviceId,
-        external_user_id: playerId, platform: "rey_de_ases",
+        external_user_id: playerId, player_provider_account_id: providerAccountId,
+        target_provider: "rey_de_ases", platform: "rey_de_ases",
         username: "test-user", password: "test-pass", target_path: "/casino/list/home",
       });
       return Response.json({ handoff_url: "https://gateway.example.com/start?t=token", expires_at: "2026-10-08T12:00:00Z", binding_created: true });

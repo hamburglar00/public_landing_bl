@@ -1,15 +1,18 @@
 import { LandingConfig } from '@/lib/landing/types';
 
 export async function getLandingConfig(name: string): Promise<LandingConfig | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!baseUrl) {
-    throw new Error('Falta NEXT_PUBLIC_SITE_URL');
+  if (!baseUrl || !anonKey) {
+    throw new Error('Falta la configuración pública de Supabase');
   }
 
-  const url = `${baseUrl}/api/config?name=${encodeURIComponent(name)}`;
+  const url = new URL('/functions/v1/builder-config', baseUrl);
+  url.searchParams.set('name', name);
 
   const response = await fetch(url, {
+    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
     cache: 'force-cache',
     next: { revalidate: 60, tags: [`landing-config:${name}`] }
   });

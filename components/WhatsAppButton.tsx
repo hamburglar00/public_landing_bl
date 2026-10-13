@@ -585,7 +585,7 @@ export default function WhatsAppButton({
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 18000);
     try {
-      const response = await fetch('/api/rey-de-ases/start', {
+      const response = await fetch('/api/template7/start', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
         body: JSON.stringify({
@@ -1122,9 +1122,25 @@ export default function WhatsAppButton({
         promo_code: promoCode,
         source: 'main_button',
         source_platform: 'landing',
+        target_provider: gatewayMode ? (config.tracking.target_provider || 'rey_de_ases') : undefined,
+        skin_code: gatewayMode && config.tracking.target_provider === 'multi_skin'
+          ? (config.tracking.skin_code || 'ganamos_plus')
+          : undefined,
         cta_destination: atrioMode ? 'atrio' : 'whatsapp',
-        redirect_channel: gatewayMode ? 'rey_de_ases_gateway' : atrioMode ? 'atrio' : 'whatsapp',
-        gateway_app_id: gatewayMode ? 'reydeases_gateway' : undefined,
+        redirect_channel: gatewayMode
+          ? config.tracking.target_provider === 'multi_skin'
+            ? 'multi_skin_gateway'
+            : config.tracking.target_provider === 'ases_del_norte'
+              ? 'ases_del_norte_gateway'
+              : 'rey_de_ases_gateway'
+          : atrioMode ? 'atrio' : 'whatsapp',
+        gateway_app_id: gatewayMode
+          ? config.tracking.target_provider === 'multi_skin'
+            ? 'multi_skin_gateway'
+            : config.tracking.target_provider === 'ases_del_norte'
+              ? 'ases_del_norte_gateway'
+              : 'reydeases_gateway'
+          : undefined,
         atrio_redirect_url: atrioMode ? (atrioSelection?.atrioRedirectUrl || String(config.tracking.atrioRedirectUrl || '').trim()) : undefined,
         atrio_client_id: atrioMode ? (atrioSelection?.atrioClientId || String(config.tracking.atrioClientId || '').trim()) : undefined,
         atrio_id: atrioMode ? (atrioSelection?.atrioId || String(config.tracking.atrioId || '').trim()) : undefined,
