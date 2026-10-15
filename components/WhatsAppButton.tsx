@@ -594,6 +594,8 @@ export default function WhatsAppButton({
           promo_code: promoCode,
           attribution: {
             utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
+            landing: slug, campana: params.get('campana') || '',
+            conjunto: params.get('conjunto') || '', anuncio: params.get('anuncio') || '',
             utm_campaign: params.get('utm_campaign') || '', utm_content: params.get('utm_content') || '',
             utm_term: params.get('utm_term') || '', fbp, fbc
           }
@@ -1089,6 +1091,7 @@ export default function WhatsAppButton({
         }
       }
 
+      const marketingParams = getQueryParamsSnapshot();
       const payload = {
         event_name: 'Contact',
         meta_pixel_id: String(config.tracking.pixelId || '').trim() || undefined,
@@ -1110,6 +1113,10 @@ export default function WhatsAppButton({
         st: enrichedIdentity.st || undefined,
         zip: enrichedIdentity.zip || undefined,
         country: enrichedIdentity.country || undefined,
+        landing: slug,
+        campana: marketingParams.get('campana') || '',
+        conjunto: marketingParams.get('conjunto') || '',
+        anuncio: marketingParams.get('anuncio') || '',
         utm_campaign: utmCampaign,
         test_event_code: testEventCode || undefined,
         fbp,
