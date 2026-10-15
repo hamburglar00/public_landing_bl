@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Landing from '@/components/Landing';
+import Template7FastView from '@/components/Template7FastView';
 import { getLandingConfig } from '@/lib/landing/getLandingConfig';
 
 export const revalidate = 60;
@@ -11,6 +12,12 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
 
   if (!config) {
     notFound();
+  }
+
+  // Templates 1-6 keep their proven rendering/tracking path unchanged.
+  // The T7 fragment includes prewarm, Pixel, journey and Contact exactly once.
+  if (config.layout?.template === 7) {
+    return <Template7FastView slug={slug} config={config} />;
   }
 
   const firstBgImage = config.background?.images?.[0];
