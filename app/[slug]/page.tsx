@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Landing from '@/components/Landing';
 import Template7FastView from '@/components/Template7FastView';
 import { getLandingConfig } from '@/lib/landing/getLandingConfig';
+import { gatewayOriginFor } from '@/lib/reyDeAses/gatewayOrigins';
 
 export const revalidate = 60;
 export const dynamic = 'force-static';
@@ -36,14 +37,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
   const gatewayOrigin = (() => {
     if (config.layout?.template !== 7) return '';
     try {
-      const provider = config.tracking?.target_provider || 'rey_de_ases';
-      const rawOrigin = provider === 'multi_skin'
-        ? process.env.MULTI_SKIN_GATEWAY_ORIGIN
-        : provider === 'ases_del_norte'
-          ? process.env.ASES_DEL_NORTE_GATEWAY_ORIGIN
-          : provider === 'ganamos_net'
-            ? process.env.GANAMOS_NET_GATEWAY_ORIGIN
-          : process.env.REY_GATEWAY_ORIGIN;
+      const rawOrigin = gatewayOriginFor(config.tracking?.target_provider, config.tracking?.skin_code);
       const url = new URL(rawOrigin || '');
       return url.protocol === 'https:' ? url.origin : '';
     } catch {

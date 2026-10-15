@@ -10,6 +10,7 @@ import type {
   TargetProvider,
 } from "./contracts";
 import { isDeviceId } from "./deviceId";
+import { gatewayOriginFor } from "./gatewayOrigins";
 
 export class TargetIntegrationError extends Error {
   constructor(public readonly code: "api2_not_configured" | "integration_pending" | "upstream_unavailable") {
@@ -63,15 +64,8 @@ export function api2Readiness(): "api2_not_configured" | "integration_pending" {
 }
 
 export function gatewayReadiness(provider: TargetProvider): "integration_pending" | null {
-  const origin = gatewayOrigin(provider);
+  const origin = gatewayOriginFor(provider, null);
   return origin ? null : "integration_pending";
-}
-
-function gatewayOrigin(provider: TargetProvider): string | undefined {
-  if (provider === "multi_skin") return process.env.MULTI_SKIN_GATEWAY_ORIGIN;
-  if (provider === "ases_del_norte") return process.env.ASES_DEL_NORTE_GATEWAY_ORIGIN;
-  if (provider === "ganamos_net") return process.env.GANAMOS_NET_GATEWAY_ORIGIN;
-  return process.env.REY_GATEWAY_ORIGIN;
 }
 
 function gatewayApiKey(provider: TargetProvider, testing: boolean): string | undefined {
@@ -157,7 +151,7 @@ export async function createProviderHandoff(
   testing = false,
   promoCode?: string,
 ): Promise<HandoffResult> {
-  const origin = configuredOrigin(gatewayOrigin(provider));
+  const origin = configuredOrigin(gatewayOriginFor(provider, skinCode));
   if (player.target_provider !== provider || account.platform !== provider || (provider === "multi_skin" && !skinCode) ||
       (!testing && (!account.username || !account.password)) ||
       (testing && provider !== "multi_skin" && provider !== "ases_del_norte" && provider !== "ganamos_net")) {
