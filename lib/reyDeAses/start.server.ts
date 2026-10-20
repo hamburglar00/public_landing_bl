@@ -46,7 +46,7 @@ export type StartDependencies = {
   resolvePlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer>;
   resolveAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount>;
   linkProviderAccount?(advisor: AssignedAdvisor, player: ResolvedPlayer, account: TargetAccount): Promise<LinkedProviderAccount>;
-  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, testing: boolean, promoCode?: string): Promise<HandoffResult>;
+  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string): Promise<HandoffResult>;
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -60,7 +60,7 @@ function json(body: Record<string, string>, status: number): Response {
   } });
 }
 
-function parsePayload(value: unknown): StartRequest | null {
+export function parsePayload(value: unknown): StartRequest | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
   const name = typeof data.name === "string" ? data.name.trim().replace(/\s+/g, " ") : "";
@@ -91,14 +91,14 @@ function rawConfig(landing: LandingRow) {
   return landing.config && typeof landing.config === "object" ? landing.config as Record<string, unknown> : {};
 }
 
-function isTemplate7Landing(landing: LandingRow): boolean {
+export function isTemplate7Landing(landing: LandingRow): boolean {
   const raw = rawConfig(landing);
   const published = landing.landing_config && typeof landing.landing_config === "object" ? landing.landing_config as Record<string, unknown> : {};
   const layout = published.layout && typeof published.layout === "object" ? published.layout as Record<string, unknown> : {};
   return (raw.template === "template7" || layout.template === 7) && raw.ctaDestination === "atrio";
 }
 
-function configuredProvider(landing: LandingRow): TargetProvider | null {
+export function configuredProvider(landing: LandingRow): TargetProvider | null {
   const provider = rawConfig(landing).targetProvider;
   if (provider === undefined || provider === null) return "rey_de_ases";
   return provider === "rey_de_ases" || provider === "multi_skin" || provider === "ases_del_norte" || provider === "ganamos_net" ? provider : null;
@@ -108,27 +108,6 @@ function configuredSkin(landing: LandingRow, provider: TargetProvider): MultiSki
   if (provider !== "multi_skin") return null;
   const skin = rawConfig(landing).multiSkinCode;
   return skin === undefined || skin === null || skin === "ganamos_plus" ? "ganamos_plus" : null;
-}
-
-function csvSet(raw: string | undefined) {
-  return new Set((raw ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
-}
-
-function demoAccount(landing: LandingRow, provider: TargetProvider): { deviceId: string; account: TargetAccount; testing: boolean } | null {
-  if (process.env.TEMPLATE7_DEMO_ENABLED !== "true" || !csvSet(process.env.TEMPLATE7_DEMO_LANDING_IDS).has(landing.id.toLowerCase())) return null;
-  const deviceId = process.env.TEMPLATE7_DEMO_DEVICE_ID ?? "";
-  if (!isDeviceId(deviceId)) return null;
-  if (provider === "rey_de_ases") {
-    const username = process.env.TEMPLATE7_DEMO_REY_USERNAME ?? "";
-    const password = process.env.TEMPLATE7_DEMO_REY_PASSWORD ?? "";
-    return username && password ? { deviceId, account: { username, password, platform: provider, created: false }, testing: false } : null;
-  }
-  const enabled = provider === "multi_skin"
-    ? process.env.TEMPLATE7_DEMO_MULTI_SKIN_ENABLED === "true"
-    : provider === "ases_del_norte"
-      ? process.env.TEMPLATE7_DEMO_ASES_DEL_NORTE_ENABLED === "true"
-      : provider === "ganamos_net" && process.env.TEMPLATE7_DEMO_GANAMOS_NET_ENABLED === "true";
-  return enabled ? { deviceId, account: { username: "", password: "", platform: provider, created: false, testingBypass: true }, testing: true } : null;
 }
 
 async function bounded<T>(promise: Promise<T>): Promise<T> {
@@ -188,37 +167,24 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     if (provider === "multi_skin" && !skinCode) return json({ error: "integration_pending" }, 503);
     if (deps.gatewayStatus?.(provider)) return json({ error: "integration_pending" }, 503);
     const assigned: AssignedAdvisor = { atrioClientId: advisor.id, advisorId: advisor.atrio_id, advisorSlug: advisor.slug };
-    const demo = demoAccount(landing, provider);
-    if (!demo) {
-      const pending = deps.api2Status();
-      if (pending) return json({ error: pending }, 503);
-    }
-    const effectiveDeviceId = demo?.deviceId ?? payload.device_id;
+    const pending = deps.api2Status();
+    if (pending) return json({ error: pending }, 503);
+    const effectiveDeviceId = payload.device_id;
     const playerInput: PlayerResolveRequest = {
       advisor: assigned, deviceId: effectiveDeviceId, name: payload.name, ...(payload.phone ? { phone: payload.phone } : {}),
       landingId: landing.id, landingSlug: landing.name, promoCode: payload.promo_code, targetProvider: provider,
     };
     const player = await deps.resolvePlayer(playerInput);
     if (player.target_provider !== provider || player.device_id !== effectiveDeviceId) throw new TargetIntegrationError("upstream_unavailable");
-    let account = demo?.account ?? await deps.resolveAccount({
-      external_user_id: player.player_id, name: payload.name, advisor_id: assigned.advisorId,
+    const account = await deps.resolveAccount({
+      external_user_id: player.player_id,
+          manager_id: player.manager_id, agency_id:player.agency_id, name: payload.name, advisor_id: assigned.advisorId,
       advisor_slug: assigned.advisorSlug, target_provider: provider, ...(skinCode ? { skin_code: skinCode } : {}),
     });
-    const testing = demo?.testing === true;
-    let handoff: HandoffResult;
-    if (!testing && deps.linkProviderAccount) {
-      [, handoff] = await Promise.all([
-        deps.linkProviderAccount(assigned, player, account),
-        deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, false, payload.promo_code),
-      ]);
-    } else {
-      handoff = await deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, testing, payload.promo_code);
-    }
-    if (testing) {
-      if (!handoff.provider_username) throw new TargetIntegrationError("upstream_unavailable");
-      account = { ...account, username: handoff.provider_username };
-    }
-    if (testing && deps.linkProviderAccount) await deps.linkProviderAccount(assigned, player, account);
+    const [, handoff] = await Promise.all([
+      deps.linkProviderAccount?.(assigned, player, account),
+      deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code),
+    ]);
     return json({ handoff_url: handoff.handoff_url }, 200);
   } catch (error) {
     if (error instanceof TargetIntegrationError) return json({ error: error.code }, 503);
