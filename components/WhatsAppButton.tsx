@@ -117,7 +117,7 @@ function buildMessage(promoCode: string, whatsappPrefillText?: string) {
 }
 
 function isAtrioDestination(config: LandingConfig) {
-  return config.layout?.template === 7 || String(config.tracking.ctaDestination || 'whatsapp').toLowerCase() === 'atrio';
+  return config.layout?.template === 7;
 }
 
 function buildAtrioRedirectUrl(

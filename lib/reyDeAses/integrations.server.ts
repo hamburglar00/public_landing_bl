@@ -114,10 +114,12 @@ export async function resolveInternalChatPlayer(input: PlayerResolveRequest): Pr
 }
 
 export async function resolveTargetAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount> {
+  // Ganamos+ has no PBAdmin integration; platform 2 belongs only to Ganamos NET.
+  if (request.target_provider === "multi_skin") throw new TargetIntegrationError("integration_pending");
   if (!Number.isSafeInteger(request.agency_id) || Number(request.agency_id)<=0 || !Number.isSafeInteger(request.manager_id) || Number(request.manager_id)<=0) throw new TargetIntegrationError("integration_pending");
   const pending = api2Readiness();
   if (pending) throw new TargetIntegrationError(pending);
-  const platforms: Record<TargetProvider, number> = { ases_del_norte: 1, multi_skin: 2, ganamos_net: 2, rey_de_ases: 5 };
+  const platforms: Record<Exclude<TargetProvider, "multi_skin">, number> = { ases_del_norte: 1, ganamos_net: 2, rey_de_ases: 5 };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
   try {

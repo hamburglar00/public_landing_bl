@@ -29,6 +29,14 @@ export type Template7StartRateLimitKeys = {
   unbound: string | null;
 };
 
+/** Same durable namespaces as allowTemplate7Warm, derived only on the server. */
+export function template7WarmRateLimitKeys(request: Request, deviceId: string) {
+  return {
+    ip: bucketKey(`warm-ip:${clientIp(request)}`),
+    device: bucketKey(`warm-device:${deviceId}`),
+  };
+}
+
 /** Builds opaque keys once so the consolidated database function can consume
  * every Template 7 start limit inside the same transaction. */
 export function template7StartRateLimitKeys(
