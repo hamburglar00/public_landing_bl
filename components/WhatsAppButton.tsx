@@ -594,7 +594,9 @@ export default function WhatsAppButton({
           promo_code: promoCode,
           attribution: {
             utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
-            landing: slug, campana: params.get('campana') || '',
+            landing: slug, facebook: params.get('facebook') || '',
+            portofolio: params.get('portofolio') || '', cp: params.get('cp') || '',
+            campana: params.get('campana') || '',
             conjunto: params.get('conjunto') || '', anuncio: params.get('anuncio') || '',
             utm_campaign: params.get('utm_campaign') || '', utm_content: params.get('utm_content') || '',
             utm_term: params.get('utm_term') || '', fbp, fbc
@@ -1115,6 +1117,9 @@ export default function WhatsAppButton({
         country: enrichedIdentity.country || undefined,
         landing: slug,
         campana: marketingParams.get('campana') || '',
+        facebook: marketingParams.get('facebook') || '',
+        portofolio: marketingParams.get('portofolio') || '',
+        cp: marketingParams.get('cp') || '',
         conjunto: marketingParams.get('conjunto') || '',
         anuncio: marketingParams.get('anuncio') || '',
         utm_campaign: utmCampaign,
