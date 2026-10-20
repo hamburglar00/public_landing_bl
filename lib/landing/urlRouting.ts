@@ -16,9 +16,10 @@ export function landingOverride(url: URL): { slug: string; pathname: string } | 
 export function fallbackDestination(slug: string, params: Record<string, string | string[] | undefined>): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (key === 'landing') continue;
+    if (key === 'landing' || key === '__landing_auto') continue;
     for (const entry of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, entry);
   }
+  query.set('__landing_auto', slug);
   const suffix = query.toString();
   return `/${encodeURIComponent(slug)}${suffix ? `?${suffix}` : ''}`;
 }

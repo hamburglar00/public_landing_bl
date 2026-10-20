@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { captureLandingResolution } from '@/lib/landing/resolution';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig, LandingPhoneResponse } from '@/lib/landing/types';
 import {
@@ -238,7 +239,7 @@ export default function LandingPageViewTracker({ slug, config }: Props) {
       workspace_currency: resolveWorkspaceCurrency(config),
       external_id: externalId,
       event_source_url: safeEventSourceUrl(),
-      landing: slug,
+      landing: slug, landing_resolution: captureLandingResolution(slug, true) || "",
       facebook: params.get('facebook') || '',
       portofolio: params.get('portofolio') || '',
       cp: params.get('cp') || '',

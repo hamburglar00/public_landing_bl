@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { captureLandingResolution } from '@/lib/landing/resolution';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import { notifyTemplate6CardClick } from '@/lib/landing/notifyTemplate6CardClick';
 import type { LandingConfig } from '@/lib/landing/types';
@@ -594,7 +595,7 @@ export default function WhatsAppButton({
           promo_code: promoCode,
           attribution: {
             utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
-            landing: slug, facebook: params.get('facebook') || '',
+            landing: slug, landing_resolution: captureLandingResolution(slug, true) || "", facebook: params.get('facebook') || '',
             portofolio: params.get('portofolio') || '', cp: params.get('cp') || '',
             campana: params.get('campana') || '',
             conjunto: params.get('conjunto') || '', anuncio: params.get('anuncio') || '',
@@ -1115,7 +1116,7 @@ export default function WhatsAppButton({
         st: enrichedIdentity.st || undefined,
         zip: enrichedIdentity.zip || undefined,
         country: enrichedIdentity.country || undefined,
-        landing: slug,
+        landing: slug, landing_resolution: captureLandingResolution(slug, true) || "",
         campana: marketingParams.get('campana') || '',
         facebook: marketingParams.get('facebook') || '',
         portofolio: marketingParams.get('portofolio') || '',

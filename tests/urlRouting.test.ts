@@ -31,9 +31,10 @@ test('invalid, duplicated and internal targets cannot be routed', () => {
 });
 
 test('organic selection retains query data and records a stable selected path', () => {
-  const url = new URL(fallbackDestination('bianca2', { landing: '', campana: 'A & B', conjunto: 'Ñ', anuncio: '42', utm_campaign: 'legacy', fbclid: 'click', repeated: ['1', '2'] }), 'https://landing.test');
+  const url = new URL(fallbackDestination('bianca2', { landing: '', __landing_auto: 'forged', campana: 'A & B', conjunto: 'Ñ', anuncio: '42', utm_campaign: 'legacy', fbclid: 'click', repeated: ['1', '2'] }), 'https://landing.test');
   assert.equal(url.pathname, '/bianca2');
   assert.equal(url.searchParams.get('landing'), null);
+  assert.deepEqual(url.searchParams.getAll('__landing_auto'), ['bianca2']);
   assert.equal(url.searchParams.get('campana'), 'A & B');
   assert.equal(url.searchParams.get('conjunto'), 'Ñ');
   assert.equal(url.searchParams.get('utm_campaign'), 'legacy');
