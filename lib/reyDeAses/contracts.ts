@@ -3,6 +3,7 @@ export type MultiSkinCode = "ganamos_plus";
 
 export type StartRequest = {
   landing_id: string;
+  card_index?: number;
   landing_slug: string;
   name: string;
   phone?: string;

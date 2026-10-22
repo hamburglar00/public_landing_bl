@@ -17,7 +17,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
 
   // Templates 1-6 keep their proven rendering/tracking path unchanged.
   // The T7 fragment includes prewarm, Pixel, journey and Contact exactly once.
-  if (config.layout?.template === 7) {
+  if (config.layout?.template === 7 || config.layout?.template === 8) {
     return <Template7FastView slug={slug} config={config} />;
   }
 

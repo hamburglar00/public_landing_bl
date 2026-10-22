@@ -1,3 +1,5 @@
+import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
+import { template8Provider } from "../landing/template8";
 import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
 import { createClient } from "@supabase/supabase-js";
@@ -52,7 +54,7 @@ export type StartDependencies = {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,159}$/i;
 const ADVISOR_SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/i;
-const ATTRIBUTION_KEYS = ["landing", "landing_resolution", "facebook", "portofolio", "cp", "campana", "conjunto", "anuncio", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbp", "fbc", "referrer"] as const;
+const ATTRIBUTION_KEYS = ["landing", "landing_resolution", "facebook", "portofolio", "cp", "campana", "conjunto", "anuncio", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbp", "fbc", "referrer", "card_index", "target_provider", "skin_code"] as const;
 
 function json(body: Record<string, string>, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: {
@@ -63,6 +65,7 @@ function json(body: Record<string, string>, status: number): Response {
 export function parsePayload(value: unknown): StartRequest | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
+  if (data.card_index !== undefined && (!Number.isInteger(data.card_index) || Number(data.card_index) < 1 || Number(data.card_index) > 6)) return null;
   const name = typeof data.name === "string" ? data.name.trim().replace(/\s+/g, " ") : "";
   if (!UUID_PATTERN.test(String(data.landing_id ?? "")) || !SLUG_PATTERN.test(String(data.landing_slug ?? "")) ||
       !UUID_PATTERN.test(String(data.atrio_client_id ?? "")) || !UUID_PATTERN.test(String(data.advisor_id ?? "")) ||
@@ -81,6 +84,7 @@ export function parsePayload(value: unknown): StartRequest | null {
     if (field) attribution[key] = field;
   }
   return {
+    ...(data.card_index !== undefined ? { card_index: Number(data.card_index) } : {}),
     landing_id: String(data.landing_id), landing_slug: String(data.landing_slug), name,
     device_id: String(data.device_id), atrio_client_id: String(data.atrio_client_id),
     advisor_id: String(data.advisor_id), advisor_slug: String(data.advisor_slug), promo_code: promo,
@@ -96,7 +100,7 @@ export function isTemplate7Landing(landing: LandingRow): boolean {
   const raw = rawConfig(landing);
   const published = landing.landing_config && typeof landing.landing_config === "object" ? landing.landing_config as Record<string, unknown> : {};
   const layout = published.layout && typeof published.layout === "object" ? published.layout as Record<string, unknown> : {};
-  return (raw.template === "template7" || layout.template === 7) && raw.ctaDestination === "atrio";
+  return (raw.template === "template7" || raw.template === "template8" || layout.template === 7) && raw.ctaDestination === "atrio";
 }
 
 export function configuredProvider(landing: LandingRow): TargetProvider | null {
@@ -149,7 +153,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     } else {
       const candidate = await bounded(deps.db.landing(payload.landing_id));
       if (!candidate || candidate.name !== payload.landing_slug || !isTemplate7Landing(candidate)) return json({ error: "landing_not_found" }, 404);
-      const selectedProvider = configuredProvider(candidate);
+      const selectedProvider = (candidate.config as { template?: string })?.template === "template8" ? template8Provider(candidate.config, payload.card_index) : configuredProvider(candidate);
       if (!selectedProvider) return json({ error: "integration_pending" }, 503);
       landing = candidate;
       provider = selectedProvider;
@@ -216,7 +220,8 @@ function productionDb(): StartDb {
     async blocked(userId) { const { data, error } = await supabase.rpc("is_client_access_blocked", { p_user_id: userId }); if (error) throw error; return data === true; },
     async context(request, payload) {
       const ip = clientIp(request);
-      const { data, error } = await supabase.rpc("resolve_template7_start_context", {
+      const { data, error } = await supabase.rpc(payload.card_index ? "resolve_template8_start_context" : "resolve_template7_start_context", {
+      ...(payload.card_index ? { p_card_index: payload.card_index } : {}),
         p_landing_id: payload.landing_id, p_landing_slug: payload.landing_slug,
         p_atrio_client_id: payload.atrio_client_id, p_advisor_id: payload.advisor_id, p_advisor_slug: payload.advisor_slug,
         p_global_bucket_key: bucket(`global-ip:${ip}`), p_start_bucket_key: bucket(`start:${payload.landing_id}:${payload.device_id}`),
@@ -226,6 +231,7 @@ function productionDb(): StartDb {
       const row = data[0] as Record<string, unknown>;
       const status = String(row.status) as ContextStatus;
       if (status !== "ok") return { status };
+    if (payload.card_index && !(await confirmTemplate8Destination(String(row.landing_id), String(row.target_provider), payload.device_id, payload.advisor_id))) return { status: "advisor_not_assigned" };
       const selectedProvider = row.target_provider;
       if (selectedProvider !== "rey_de_ases" && selectedProvider !== "multi_skin" && selectedProvider !== "ases_del_norte" && selectedProvider !== "ganamos_net") throw new Error("invalid provider");
       return {
