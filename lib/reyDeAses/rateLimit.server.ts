@@ -78,10 +78,7 @@ export async function allowTemplate7Warm(request: Request, deviceId: string): Pr
 export async function allowTemplate7Start(request: Request, landingId: string, deviceId: string, needsCookie: boolean): Promise<boolean> {
   const ip = clientIp(request);
   if (!await consume(`global-ip:${ip}`, 120, 60)) return false;
-  // Cuando bootstrap no llegó a fijar una cookie, serializar el primer start
-  // por IP/landing para que dos clics simultáneos no creen dos identidades.
-  if (needsCookie && !await consume(`unbound-start:${landingId}:${ip}`, 1, 45)) return false;
-  // El primer intento ocupa un lock durable de 45 s. Dos solicitudes concurrentes
-  // con la misma landing y cookie no pueden avanzar a la creación de cuenta.
-  return consume(`start:${landingId}:${deviceId}`, 1, 45);
+  // API2 serializes the persisted identity; these limits only bound recovery traffic.
+  if (needsCookie && !await consume(`unbound-start:${landingId}:${ip}`, 4, 10)) return false;
+  return consume(`start:${landingId}:${deviceId}`, 4, 10);
 }

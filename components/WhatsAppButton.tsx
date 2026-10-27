@@ -7,6 +7,7 @@ import { notifyTemplate6CardClick } from '@/lib/landing/notifyTemplate6CardClick
 import type { LandingConfig } from '@/lib/landing/types';
 import { validInlineEmail } from '@/lib/tracking/inlineEmail';
 import { getOrCreateDeviceId } from '@/lib/reyDeAses/deviceId';
+import { fetchWithEntryRecovery } from '@/lib/reyDeAses/request-recovery';
 import {
   buildTrackingStorageKey,
   buildTrackingStorageNamespace
@@ -583,32 +584,28 @@ export default function WhatsAppButton({
 
   async function startTemplate7Gateway(name: string, phone: string, deviceId: string, promoCode: string, selection: AtrioSelection, fbp: string, fbc: string): Promise<string> {
     const params = getQueryParamsSnapshot();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 18000);
-    try {
-      const response = await fetch('/api/template7/start', {
-        method: 'POST', credentials: 'same-origin', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({
-          landing_id: config.id, landing_slug: slug, name, ...(phone ? { phone } : {}), device_id: deviceId,
-          atrio_client_id: selection.atrioClientId, advisor_id: selection.atrioId, advisor_slug: selection.atrioSlug,
-          promo_code: promoCode,
-          attribution: {
-            utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
-            landing: slug, landing_resolution: captureLandingResolution(slug, true) || "", facebook: params.get('facebook') || '',
-            portofolio: params.get('portofolio') || '', cp: params.get('cp') || '',
-            campana: params.get('campana') || '',
-            conjunto: params.get('conjunto') || '', anuncio: params.get('anuncio') || '',
-            utm_campaign: params.get('utm_campaign') || '', utm_content: params.get('utm_content') || '',
-            utm_term: params.get('utm_term') || '', fbp, fbc
-          }
-        })
-      });
-      if (!response.ok) throw new Error('gateway unavailable');
-      const result: unknown = await response.json();
-      if (!result || typeof result !== 'object' || typeof (result as Record<string, unknown>).handoff_url !== 'string') throw new Error('invalid handoff');
-      return (result as { handoff_url: string }).handoff_url;
-    } finally { clearTimeout(timer); }
+    const response = await fetchWithEntryRecovery('/api/template7/start', {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        landing_id: config.id, landing_slug: slug, name, ...(phone ? { phone } : {}), device_id: deviceId,
+        atrio_client_id: selection.atrioClientId, advisor_id: selection.atrioId, advisor_slug: selection.atrioSlug,
+        promo_code: promoCode,
+        attribution: {
+          utm_source: params.get('utm_source') || '', utm_medium: params.get('utm_medium') || '',
+          landing: slug, landing_resolution: captureLandingResolution(slug, true) || "", facebook: params.get('facebook') || '',
+          portofolio: params.get('portofolio') || '', cp: params.get('cp') || '',
+          campana: params.get('campana') || '',
+          conjunto: params.get('conjunto') || '', anuncio: params.get('anuncio') || '',
+          utm_campaign: params.get('utm_campaign') || '', utm_content: params.get('utm_content') || '',
+          utm_term: params.get('utm_term') || '', fbp, fbc
+        }
+      })
+    });
+    if (!response.ok) throw new Error('gateway unavailable');
+    const result: unknown = await response.json();
+    if (!result || typeof result !== 'object' || typeof (result as Record<string, unknown>).handoff_url !== 'string') throw new Error('invalid handoff');
+    return (result as { handoff_url: string }).handoff_url;
   }
 
   function createPreparedClickContext(): PreparedClickContext {

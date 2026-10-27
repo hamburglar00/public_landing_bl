@@ -56,7 +56,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,159}$/i;
 const ADVISOR_SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/i;
 const ATTRIBUTION_KEYS = ["landing", "landing_resolution", "facebook", "portofolio", "cp", "campana", "conjunto", "anuncio", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbp", "fbc", "referrer", "card_index", "target_provider", "skin_code"] as const;
 
-function json(body: Record<string, string>, status: number): Response {
+function json(body: Record<string, unknown>, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: {
     "Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
   } });
@@ -145,7 +145,9 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
         const status = context.status === "landing_not_found" ? 404
           : context.status === "landing_unavailable" || context.status === "advisor_not_assigned" ? 403
             : context.status === "rate_limited" ? 429 : 503;
-        return json({ error: context.status }, status);
+        const response = json({ error: context.status }, status);
+        if (status === 429) response.headers.set("Retry-After", "10");
+        return response;
       }
       landing = context.landing;
       provider = context.provider;
@@ -192,7 +194,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     ]);
     return json({ handoff_url: handoff.handoff_url }, 200);
   } catch (error) {
-    if (error instanceof TargetIntegrationError) return json({ error: error.code }, 503);
+    if (error instanceof TargetIntegrationError) return json({ error: error.code, retryable: error.retryable }, 503);
     return json({ error: "service_unavailable" }, 503);
   }
 }

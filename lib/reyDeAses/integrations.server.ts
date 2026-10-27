@@ -13,7 +13,7 @@ import { isDeviceId } from "./deviceId";
 import { gatewayOriginFor } from "./gatewayOrigins";
 
 export class TargetIntegrationError extends Error {
-  constructor(public readonly code: "api2_not_configured" | "integration_pending" | "upstream_unavailable") {
+  constructor(public readonly code: "api2_not_configured" | "integration_pending" | "upstream_unavailable", public readonly retryable = code === "upstream_unavailable") {
     super(code);
   }
 }
@@ -82,13 +82,13 @@ function gatewayApiKey(provider: TargetProvider): string | undefined {
 }
 
 export function validateResolvedPlayer(result: unknown, input: Pick<PlayerResolveRequest, "advisor" | "deviceId" | "targetProvider">): ResolvedPlayer {
-  if (!result || typeof result !== "object" || Array.isArray(result)) throw new TargetIntegrationError("upstream_unavailable");
+  if (!result || typeof result !== "object" || Array.isArray(result)) throw new TargetIntegrationError("upstream_unavailable", false);
   const player = result as Record<string, unknown>;
   if (player.advisor_id !== input.advisor.advisorId || player.advisor_slug !== input.advisor.advisorSlug ||
       !isDeviceId(player.player_id) || player.device_id !== input.deviceId ||
       !isDeviceId(player.player_provider_account_id) || player.target_provider !== input.targetProvider ||
       typeof player.created !== "boolean" || typeof player.provider_account_created !== "boolean") {
-    throw new TargetIntegrationError("upstream_unavailable");
+    throw new TargetIntegrationError("upstream_unavailable", false);
   }
   return player as ResolvedPlayer;
 }
@@ -121,7 +121,7 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
   if (pending) throw new TargetIntegrationError(pending);
   const platforms: Record<Exclude<TargetProvider, "multi_skin">, number> = { ases_del_norte: 1, ganamos_net: 2, rey_de_ases: 5 };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), 35_000);
   try {
     const response = await fetch(new URL(`/api/v1/bot/managers/${request.manager_id}/players`, configuredOrigin(process.env.API2_ORIGIN)), {
       method: "POST", cache: "no-store", redirect: "error", signal: controller.signal,
@@ -129,7 +129,12 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
       body: JSON.stringify({ external_user_id: request.external_user_id, name: request.name, advisor_id: request.advisor_id, agency_id:request.agency_id,
         ...(request.target_provider === "ganamos_net" ? { creation_mode: "create_only" } : {}) }),
     });
-    if (!response.ok) throw new TargetIntegrationError("upstream_unavailable");
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null);
+      const retryable = failure?.error?.retryable === true ||
+        (failure?.error?.retryable !== false && [408, 429, 500, 502, 503, 504].includes(response.status));
+      throw new TargetIntegrationError("upstream_unavailable", retryable);
+    }
     const result: unknown = await response.json();
     if (!result || typeof result !== "object" || Array.isArray(result)) throw new TargetIntegrationError("upstream_unavailable");
     const data = result as Record<string, unknown>;
