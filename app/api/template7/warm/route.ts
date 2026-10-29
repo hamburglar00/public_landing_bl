@@ -27,9 +27,18 @@ export async function POST(request: Request) {
     const key = process.env.INTERNAL_CHAT_PLAYER_RESOLVE_KEY || process.env.INTERNAL_CHAT_GATEWAY_API_KEY;
     const origin = new URL(process.env.INTERNAL_CHAT_ORIGIN || '');
     if (!key || origin.protocol !== 'https:') return json({ error: 'unavailable' }, 503);
+    const input = {advisor_id:advisor.atrio_id,advisor_slug:advisor.slug,device_id:payload.device_id,landing_id:landing.id,target_provider:provider};
+    const existing = await fetch(new URL('/api/gateway/players/existing', origin), {
+      method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
+      cache:'no-store',redirect:'error',signal:AbortSignal.timeout(7000),body:JSON.stringify(input),
+    });
+    if (!existing.ok) return json({error:'preparation_unavailable'},503);
+    const found = await existing.json();
+    if (typeof found.existing_name === 'string' && typeof found.promo_code === 'string')
+      return json({ready:true,existing_name:found.existing_name,promo_code:found.promo_code},200);
     const response = await fetch(new URL('/api/gateway/players/prepare',origin),{
       method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(7000),
-      body:JSON.stringify({advisor_id:advisor.atrio_id,advisor_slug:advisor.slug,device_id:payload.device_id,landing_id:landing.id,target_provider:provider}),
+      body:JSON.stringify(input),
     });
     if (!response.ok) return json({ error:'preparation_unavailable' },503);
     return json({ready:true},200);
