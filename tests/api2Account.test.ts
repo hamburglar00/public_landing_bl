@@ -11,20 +11,20 @@ test("classic account adapter uses supported PBAdmin providers and preserves ext
   const input = { manager_id:1035, agency_id:272, external_user_id: "player-id", name: "Prueba", advisor_id: "advisor/id", advisor_slug: "advisor" };
   try {
     assert.equal(api2Readiness(), null);
-    for (const [provider, platform] of [["rey_de_ases", 5], ["ases_del_norte", 1], ["ganamos_net", 2]] as [TargetProvider, number][]) {
+    for (const [provider, platform] of [["rey_de_ases", 5], ["ases_del_norte", 1], ["ganamos_net", 2], ["multi_skin", 7]] as [TargetProvider, number][]) {
       globalThis.fetch = async (url, init) => {
         assert.equal(String(url), "https://api2.example.test/api/v1/bot/managers/1035/players");
         assert.equal(new Headers(init?.headers).get("apikey"), "fixture-key");
         assert.deepEqual(JSON.parse(String(init?.body)), { external_user_id: "player-id", name: "Prueba", advisor_id:"advisor/id", agency_id:272,
-          ...(provider === "ganamos_net" ? { creation_mode: "create_only" } : {}) });
+          ...(["ganamos_net", "multi_skin"].includes(provider) ? { creation_mode: "create_only" } : {}) });
         return Response.json({ success: true, username: "test-user", password: "test-password", platform, is_new: true }, { status: 201 });
       };
       assert.deepEqual(await resolveTargetAccount({ ...input, target_provider: provider }), {
         username: "test-user", password: "test-password", platform: provider, created: true, externalAccountId: "player-id",
       });
     }
-    globalThis.fetch = async () => { throw new Error("Ganamos+ must not reuse a NET manager"); };
-    await assert.rejects(resolveTargetAccount({ ...input, target_provider: "multi_skin" }), /integration_pending/);
+    globalThis.fetch = async () => Response.json({success:true,username:'wrong-provider',password:'secret',platform:2,is_new:true});
+    await assert.rejects(resolveTargetAccount({ ...input, target_provider: "multi_skin" }), /upstream_unavailable/);
     globalThis.fetch = async () => Response.json({ success: true, username: "u", password: "p", platform: 1, is_new: true });
     await assert.rejects(resolveTargetAccount({ ...input, target_provider: "rey_de_ases" }), /upstream_unavailable/);
     globalThis.fetch = async () => Response.json({ code: "access_denied" }, { status: 401 });

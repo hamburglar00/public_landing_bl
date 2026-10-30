@@ -21,7 +21,7 @@ for (const provider of ['rey_de_ases', 'ases_del_norte', 'ganamos_net', 'multi_s
     assert.match(html, /data-template7-critical/);
     assert.match(html, /data-template7-whatsapp/);
     assert.match(html, new RegExp(`"targetProvider":"${provider}"`));
-    assert.match(html, /fetch\("\/api\/template7\/start"/);
+    assert.match(html, /fetchWithEntryRecovery\("\/api\/template7\/start"/);
     assert.match(html, /internal-chat:device-id/);
     assert.match(html, /form_phone: formPhone/);
     assert.match(html, /promo_code: promoCode/);

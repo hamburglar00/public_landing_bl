@@ -75,6 +75,24 @@ function dependencies(status: ReturnType<StartDependencies["api2Status"]> = null
   return { deps, calls };
 }
 
+test("classic Template 8 binds the saved Bet30 card through preparation and handoff, ignoring client skin hints", async () => {
+  for (const skin of ["bet30", "foreign-domain"] as const) {
+    const {deps} = dependencies();
+    const read = deps.db.landing;
+    deps.db.landing = async id => ({ ...(await read(id))!, config:{ template:"template8",ctaDestination:"atrio",multiSkinCode:"ganamos_plus",template8Cover:{cardCount:2,cards:[{targetProvider:"multi_skin"},{targetProvider:"multi_skin",multiSkinCode:skin}]} } });
+    const observed: unknown[] = [];
+    deps.resolvePlayer = async input => {
+      assert.equal(input.targetProvider,"multi_skin");
+      return {manager_id:1035,agency_id:272,advisor_id:advisorId,advisor_slug:"gera",player_id:playerId,device_id:deviceId,player_provider_account_id:providerAccountId,target_provider:"multi_skin",created:false,provider_account_created:false};
+    };
+    deps.resolveAccount = async input => { observed.push(input.skin_code); return {username:"fixtureuser",password:"fixture-password",platform:"multi_skin",created:false}; };
+    deps.createHandoff = async (...args) => { observed.push(args[5]); return {handoff_url:"https://gateway.example.com/start?t=fixture",expires_at:"2026-10-30T00:00:00Z",binding_created:false}; };
+    const response = await handleReyStart(request({...validPayload,card_index:2,attribution:{skin_code:"jugamos"}}),deps);
+    assert.equal(response.status,skin === "bet30" ? 200 : 503);
+    assert.deepEqual(observed,skin === "bet30" ? ["bet30","bet30"] : []);
+  }
+});
+
 test("device_id se reutiliza entre clics y al recuperar la cookie", () => {
   const storage = new Map<string, string>();
   let cookie = "";

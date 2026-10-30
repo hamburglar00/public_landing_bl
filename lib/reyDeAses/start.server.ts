@@ -1,5 +1,5 @@
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
-import { template8Provider } from "../landing/template8";
+import { template8Provider, template8SkinCode } from "../landing/template8";
 import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
 import { createClient } from "@supabase/supabase-js";
@@ -109,10 +109,11 @@ export function configuredProvider(landing: LandingRow): TargetProvider | null {
   return provider === "rey_de_ases" || provider === "multi_skin" || provider === "ases_del_norte" || provider === "ganamos_net" ? provider : null;
 }
 
-function configuredSkin(landing: LandingRow, provider: TargetProvider): MultiSkinCode | null {
+function configuredSkin(landing: LandingRow, provider: TargetProvider, cardIndex?: unknown): MultiSkinCode | null {
   if (provider !== "multi_skin") return null;
+  if (rawConfig(landing).template === "template8") return template8SkinCode(landing.config, cardIndex);
   const skin = rawConfig(landing).multiSkinCode;
-  return skin === undefined || skin === null || skin === "ganamos_plus" ? "ganamos_plus" : null;
+  return skin === undefined || skin === null ? "ganamos_plus" : isMultiSkinCode(skin) ? skin : null;
 }
 
 async function bounded<T>(promise: Promise<T>): Promise<T> {
@@ -170,7 +171,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       advisor = selectedAdvisor;
     }
 
-    const skinCode = configuredSkin(landing, provider);
+    const skinCode = configuredSkin(landing, provider, payload.card_index);
     if (provider === "multi_skin" && !skinCode) return json({ error: "integration_pending" }, 503);
     if (deps.gatewayStatus?.(provider)) return json({ error: "integration_pending" }, 503);
     const assigned: AssignedAdvisor = { atrioClientId: advisor.id, advisorId: advisor.atrio_id, advisorSlug: advisor.slug };
@@ -252,3 +253,4 @@ export function productionDependencies(): StartDependencies {
     linkProviderAccount: linkInternalChatProviderAccount, createHandoff: createProviderHandoff,
   };
 }
+import { isMultiSkinCode } from "../multi-skin-catalog";

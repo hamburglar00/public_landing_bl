@@ -114,12 +114,10 @@ export async function resolveInternalChatPlayer(input: PlayerResolveRequest): Pr
 }
 
 export async function resolveTargetAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount> {
-  // Ganamos+ has no PBAdmin integration; platform 2 belongs only to Ganamos NET.
-  if (request.target_provider === "multi_skin") throw new TargetIntegrationError("integration_pending");
   if (!Number.isSafeInteger(request.agency_id) || Number(request.agency_id)<=0 || !Number.isSafeInteger(request.manager_id) || Number(request.manager_id)<=0) throw new TargetIntegrationError("integration_pending");
   const pending = api2Readiness();
   if (pending) throw new TargetIntegrationError(pending);
-  const platforms: Record<Exclude<TargetProvider, "multi_skin">, number> = { ases_del_norte: 1, ganamos_net: 2, rey_de_ases: 5 };
+  const platforms: Record<TargetProvider, number> = { ases_del_norte: 1, ganamos_net: 2, rey_de_ases: 5, multi_skin: 7 };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35_000);
   try {
@@ -127,7 +125,7 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
       method: "POST", cache: "no-store", redirect: "error", signal: controller.signal,
       headers: { apikey: process.env.API2_API_KEY!, apisecret: process.env.API2_API_SECRET!, "Content-Type": "application/json" },
       body: JSON.stringify({ external_user_id: request.external_user_id, name: request.name, advisor_id: request.advisor_id, agency_id:request.agency_id,
-        ...(request.target_provider === "ganamos_net" ? { creation_mode: "create_only" } : {}) }),
+        ...(["ganamos_net", "multi_skin"].includes(request.target_provider) ? { creation_mode: "create_only" } : {}) }),
     });
     if (!response.ok) {
       const failure = await response.json().catch(() => null);

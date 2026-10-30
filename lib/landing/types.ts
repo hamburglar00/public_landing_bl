@@ -12,7 +12,7 @@ export type LandingConfig = {
     sendContactPixel?: boolean;
     ctaDestination?: 'whatsapp' | 'atrio' | string;
     target_provider?: 'rey_de_ases' | 'multi_skin' | 'ases_del_norte' | 'ganamos_net';
-    skin_code?: 'ganamos_plus';
+    skin_code?: import('../multi-skin-catalog').MultiSkinCode;
     atrioRedirectUrl?: string;
     atrioClientId?: string;
     atrioId?: string;
@@ -52,7 +52,7 @@ export type LandingConfig = {
       profileImageUrl?: string;
       backgroundImageUrl?: string;
     };
-    template8?: { cardCount: number; backgroundImageUrl: string; headerText: string; footerText: string; cards: { imageUrl: string; text: string; ctaText: string; targetProvider: string }[] };
+    template8?: { cardCount: number; backgroundImageUrl: string; headerText: string; footerText: string; cards: { imageUrl: string; text: string; ctaText: string; targetProvider: string; multiSkinCode?: import('../multi-skin-catalog').MultiSkinCode }[] };
     template6?: {
       grid?: '2x1' | '2x2' | '2x3';
       showWhatsAppLogo?: boolean;

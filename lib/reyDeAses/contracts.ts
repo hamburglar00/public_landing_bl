@@ -1,5 +1,6 @@
 export type TargetProvider = "rey_de_ases" | "multi_skin" | "ases_del_norte" | "ganamos_net";
-export type MultiSkinCode = "ganamos_plus";
+export type { MultiSkinCode } from "../multi-skin-catalog";
+import type { MultiSkinCode } from "../multi-skin-catalog";
 
 export type StartRequest = {
   landing_id: string;
