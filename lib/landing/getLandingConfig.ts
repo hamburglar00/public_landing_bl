@@ -1,5 +1,8 @@
 import { LandingConfig } from '@/lib/landing/types';
 
+// Keep public normalization in sync with the Builder reader after Edge Function changes.
+const BUILDER_CONFIG_CACHE_VERSION = '4';
+
 export async function getLandingConfig(name: string): Promise<LandingConfig | null> {
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -10,6 +13,7 @@ export async function getLandingConfig(name: string): Promise<LandingConfig | nu
 
   const url = new URL('/functions/v1/builder-config', baseUrl);
   url.searchParams.set('name', name);
+  url.searchParams.set('v', BUILDER_CONFIG_CACHE_VERSION);
 
   const response = await fetch(url, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
