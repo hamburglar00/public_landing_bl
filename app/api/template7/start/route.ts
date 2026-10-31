@@ -2,6 +2,7 @@ import { handleTemplate7Start, productionDependencies } from "../../../../lib/re
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 45;
 
 export async function POST(request: Request) {
   try {

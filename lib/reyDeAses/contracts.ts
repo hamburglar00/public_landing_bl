@@ -3,6 +3,7 @@ export type { MultiSkinCode } from "../multi-skin-catalog";
 import type { MultiSkinCode } from "../multi-skin-catalog";
 
 export type StartRequest = {
+  entry_funnel?: import("../landing/entryFunnel").EntryFunnelContext;
   landing_id: string;
   card_index?: number;
   landing_slug: string;

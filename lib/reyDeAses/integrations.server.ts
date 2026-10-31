@@ -182,6 +182,7 @@ export async function createProviderHandoff(
   account: TargetAccount,
   skinCode: MultiSkinCode | null = null,
   promoCode?: string,
+  entryFunnel?: import("../landing/entryFunnel").EntryFunnelContext,
 ): Promise<HandoffResult> {
   const origin = configuredOrigin(gatewayOriginFor(provider, skinCode));
   if (player.target_provider !== provider || account.platform !== provider || (provider === "multi_skin" && !skinCode) ||
@@ -198,6 +199,7 @@ export async function createProviderHandoff(
       player_provider_account_id: player.player_provider_account_id,
       target_provider: provider,
       ...(promoCode ? { promo_code: promoCode } : {}),
+      ...(entryFunnel ? { entry_funnel: entryFunnel } : {}),
       ...(provider === "rey_de_ases" ? {
         platform: provider, username: account.username, password: account.password, target_path: "/casino/list/home",
       } : provider === "multi_skin" ? {
@@ -207,7 +209,9 @@ export async function createProviderHandoff(
   try {
     const url = new URL(String(result.handoff_url ?? ""));
     if (url.origin !== origin.origin || url.pathname !== "/start" || url.username || url.password || url.hash ||
-        url.searchParams.size !== 1 || !url.searchParams.get("t")) throw new Error("unexpected handoff");
+        [...url.searchParams.keys()].some(key => key !== "t" && key !== "ef") || url.searchParams.getAll("ef").length > 1 ||
+        (url.searchParams.has("ef") && !/^e1\.[A-Za-z0-9_-]{1,2000}$/.test(url.searchParams.get("ef")!)) ||
+        url.searchParams.getAll("t").length !== 1 || !url.searchParams.get("t")) throw new Error("unexpected handoff");
     if (provider === "rey_de_ases") {
       if (typeof result.expires_at !== "string" || typeof result.binding_created !== "boolean") throw new Error("invalid handoff");
     } else {

@@ -26,6 +26,7 @@ import {
   TargetIntegrationError,
 } from "./integrations.server";
 import { normalizeArgentinaWhatsapp } from "../landing/argentinaWhatsapp";
+import { validateEntryFunnelContext, type EntryFunnelContext } from "../landing/entryFunnel";
 
 type LandingRow = { id: string; name: string; user_id: string; workspace_currency: string; config: unknown; landing_config: unknown };
 type AssignmentRow = { landing_id: string; atrio_client_id: string; user_id: string };
@@ -48,7 +49,7 @@ export type StartDependencies = {
   resolvePlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer>;
   resolveAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount>;
   linkProviderAccount?(advisor: AssignedAdvisor, player: ResolvedPlayer, account: TargetAccount): Promise<LinkedProviderAccount>;
-  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string): Promise<HandoffResult>;
+  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string, entryFunnel?: EntryFunnelContext): Promise<HandoffResult>;
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -65,6 +66,7 @@ function json(body: Record<string, unknown>, status: number): Response {
 export function parsePayload(value: unknown): StartRequest | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const data = value as Record<string, unknown>;
+  const funnel = validateEntryFunnelContext(data.entry_funnel);
   if (data.card_index !== undefined && (!Number.isInteger(data.card_index) || Number(data.card_index) < 1 || Number(data.card_index) > 6)) return null;
   const name = typeof data.name === "string" ? data.name.trim().replace(/\s+/g, " ") : "";
   if (!UUID_PATTERN.test(String(data.landing_id ?? "")) || !SLUG_PATTERN.test(String(data.landing_slug ?? "")) ||
@@ -84,6 +86,7 @@ export function parsePayload(value: unknown): StartRequest | null {
     if (field) attribution[key] = field;
   }
   return {
+    ...(funnel && funnel.landing_id === data.landing_id ? { entry_funnel: funnel } : {}),
     ...(data.card_index !== undefined ? { card_index: Number(data.card_index) } : {}),
     landing_id: String(data.landing_id), landing_slug: String(data.landing_slug), name,
     device_id: String(data.device_id), atrio_client_id: String(data.atrio_client_id),
@@ -191,7 +194,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     });
     const [, handoff] = await Promise.all([
       deps.linkProviderAccount?.(assigned, player, account),
-      deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code),
+      deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, payload.entry_funnel),
     ]);
     return json({ handoff_url: handoff.handoff_url }, 200);
   } catch (error) {
