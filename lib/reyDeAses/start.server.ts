@@ -1,5 +1,6 @@
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
 import { template8Provider, template8SkinCode } from "../landing/template8";
+import { resolveEffectiveLandingConfig } from "../landing/effectiveLandingConfig";
 import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
 import { createClient } from "@supabase/supabase-js";
@@ -96,7 +97,7 @@ export function parsePayload(value: unknown): StartRequest | null {
 }
 
 function rawConfig(landing: LandingRow) {
-  return landing.config && typeof landing.config === "object" ? landing.config as Record<string, unknown> : {};
+  return resolveEffectiveLandingConfig(landing.config, landing.landing_config);
 }
 
 export function isTemplate7Landing(landing: LandingRow): boolean {
@@ -114,9 +115,10 @@ export function configuredProvider(landing: LandingRow): TargetProvider | null {
 
 function configuredSkin(landing: LandingRow, provider: TargetProvider, cardIndex?: unknown): MultiSkinCode | null {
   if (provider !== "multi_skin") return null;
-  if (rawConfig(landing).template === "template8") return template8SkinCode(landing.config, cardIndex);
-  const skin = rawConfig(landing).multiSkinCode;
-  return skin === undefined || skin === null ? "ganamos_plus" : isMultiSkinCode(skin) ? skin : null;
+  const raw = rawConfig(landing);
+  if (raw.template === "template8") return template8SkinCode(raw, cardIndex);
+  const skin = raw.multiSkinCode;
+  return skin === undefined ? "ganamos_plus" : isMultiSkinCode(skin) ? skin : null;
 }
 
 async function bounded<T>(promise: Promise<T>): Promise<T> {
@@ -159,7 +161,8 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     } else {
       const candidate = await bounded(deps.db.landing(payload.landing_id));
       if (!candidate || candidate.name !== payload.landing_slug || !isTemplate7Landing(candidate)) return json({ error: "landing_not_found" }, 404);
-      const selectedProvider = (candidate.config as { template?: string })?.template === "template8" ? template8Provider(candidate.config, payload.card_index) : configuredProvider(candidate);
+      const config = rawConfig(candidate);
+      const selectedProvider = config.template === "template8" ? template8Provider(config, payload.card_index) : configuredProvider(candidate);
       if (!selectedProvider) return json({ error: "integration_pending" }, 503);
       landing = candidate;
       provider = selectedProvider;
@@ -174,6 +177,9 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       advisor = selectedAdvisor;
     }
 
+    const effectiveConfig = rawConfig(landing);
+    const effectiveProvider = effectiveConfig.template === "template8" ? template8Provider(effectiveConfig, payload.card_index) : configuredProvider(landing);
+    if (effectiveProvider !== provider) return json({ error: "integration_pending" }, 503);
     const skinCode = configuredSkin(landing, provider, payload.card_index);
     if (provider === "multi_skin" && !skinCode) return json({ error: "integration_pending" }, 503);
     if (deps.gatewayStatus?.(provider)) return json({ error: "integration_pending" }, 503);
