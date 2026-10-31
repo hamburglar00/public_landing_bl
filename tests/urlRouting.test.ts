@@ -4,6 +4,13 @@ import { NextRequest } from 'next/server';
 import { middleware } from '../middleware';
 import { fallbackDestination, landingOverride } from '../lib/landing/urlRouting';
 
+test('Diana overrides Gast with future Meta fields and preserves the same origin and attribution',()=>{
+  const input=new NextRequest('https://landing.test/gast?landing=diana&new_meta_field=x&new_meta_field=y&fbclid=original&utm_source=facebook&return_to=https://evil.test');
+  const rewritten=new URL(middleware(input).headers.get('x-middleware-rewrite')!);
+  assert.equal(rewritten.origin,input.nextUrl.origin);assert.equal(rewritten.pathname,'/diana');
+  assert.equal(rewritten.search,input.nextUrl.search);
+});
+
 test('query overrides the path and preserves attribution without a browser redirect', () => {
   for (const path of ['/', '/old', '/old/']) {
     const url = new URL(`${path}?landing=bianca2&campana=Octubre&conjunto=A%2BB&anuncio=7&utm_campaign=legacy&fbclid=click`, 'https://landing.test');
