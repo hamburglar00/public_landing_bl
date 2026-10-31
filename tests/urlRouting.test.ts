@@ -4,17 +4,18 @@ import { NextRequest } from 'next/server';
 import { middleware } from '../middleware';
 import { fallbackDestination, landingOverride } from '../lib/landing/urlRouting';
 
-test('Diana overrides Gast with future Meta fields and preserves the same origin and attribution',()=>{
+test('Diana overrides Gast with future Meta fields and preserves the same origin and attribution',async()=>{
   const input=new NextRequest('https://landing.test/gast?landing=diana&new_meta_field=x&new_meta_field=y&fbclid=original&utm_source=facebook&return_to=https://evil.test');
-  const rewritten=new URL(middleware(input).headers.get('x-middleware-rewrite')!);
+  input.headers.set('rsc', '1'); // Route selection test: skip the separate public config/render lookup.
+  const rewritten=new URL((await middleware(input)).headers.get('x-middleware-rewrite')!);
   assert.equal(rewritten.origin,input.nextUrl.origin);assert.equal(rewritten.pathname,'/diana');
   assert.equal(rewritten.search,input.nextUrl.search);
 });
 
-test('query overrides the path and preserves attribution without a browser redirect', () => {
+test('query overrides the path and preserves attribution without a browser redirect', async () => {
   for (const path of ['/', '/old', '/old/']) {
     const url = new URL(`${path}?landing=bianca2&campana=Octubre&conjunto=A%2BB&anuncio=7&utm_campaign=legacy&fbclid=click`, 'https://landing.test');
-    const response = middleware(new NextRequest(url));
+    const response = await middleware(new NextRequest(url, { headers: { rsc: '1' } }));
     const target = new URL(response.headers.get('x-middleware-rewrite')!);
     assert.equal(target.pathname.replace(/\/$/, ''), '/bianca2');
     assert.equal(target.search, url.search);
@@ -28,13 +29,17 @@ test('missing or blank landing leaves direct links intact', () => {
   }
 });
 
-test('invalid, duplicated and internal targets cannot be routed', () => {
+test('invalid, duplicated and internal targets cannot be routed', async () => {
   for (const query of ['landing=a&landing=b', 'landing=https://evil.test', 'landing=../x', 'landing=%2fapi', 'landing=api', 'landing=..', 'landing=%252fapi']) {
-    assert.equal(middleware(new NextRequest(`https://landing.test/?${query}`)).status, 404);
+    assert.equal((await middleware(new NextRequest(`https://landing.test/?${query}`))).status, 404);
   }
   for (const path of ['/api/track', '/_next/static/a.js', '/favicon.ico']) {
     assert.equal(landingOverride(new URL(`${path}?landing=bianca2`, 'https://landing.test')), null);
   }
+});
+
+test('malformed path escaping returns 404 before loading config', async () => {
+  assert.equal((await middleware(new NextRequest('https://landing.test/%ZZ'))).status, 404);
 });
 
 test('organic selection retains query data and records a stable selected path', () => {

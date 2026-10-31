@@ -20,10 +20,10 @@ const api = createServer(async (req, res) => {
   }
   if (url.pathname === '/functions/v1/builder-config') {
     const name = url.searchParams.get('name');
-    if (!['url-test-a', 'url-test-b'].includes(name)) { res.statusCode = 404; return res.end('{}'); }
+    if (!['url-test-a', 'url-test-b', 'url-test-t7', 'url-test-t8'].includes(name)) { res.statusCode = 404; return res.end('{}'); }
     return res.end(JSON.stringify({
       id: '91000000-0000-4000-8000-000000000011', name, comment: '', schemaVersion: 1, updatedAt: '',
-      layout: { template: 1, ctaPosition: 'bottom' },
+      layout: { template: name === 'url-test-t7' ? 7 : name === 'url-test-t8' ? 8 : 1, ctaPosition: 'bottom' },
       content: { logoUrl: '', title: [`Fixture ${name}`], subtitle: [], ctaText: 'Continuar' },
       tracking: { pixelId: '', postUrl: '', landingTag: 'TEST' },
     }));
@@ -64,6 +64,18 @@ try {
     console.log(`PASS: ${path}`);
   }
   assert.equal((await get('/?landing=missing')).status, 404);
+  for (const [path, template] of [['/url-test-t7', 7], ['/url-test-a?landing=url-test-t7&fbclid=kept', 7], ['/?landing=url-test-t8', 8]]) {
+    const response = await get(path);
+    const html = await response.text();
+    assert.equal(response.status, 200, errors);
+    assert.match(response.headers.get('content-type'), /text\/html/);
+    assert.match(response.headers.get('cache-control'), /s-maxage=60/);
+    assert.match(html, /<!doctype html>/);
+    assert.match(html, new RegExp(`t${template}-classic-`));
+    assert.doesNotMatch(html, /\/_next\/|self\.__next_f|data-nextjs|rel="stylesheet"/);
+    assert.match(html, new RegExp(`rel="canonical" href="${origin}/url-test-t${template}"`));
+    console.log(`PASS: raw T${template} HTML, canonical, cache, runtime and no Next chunks: ${path}`);
+  }
   assert.equal((await get('/?landing=../api')).status, 404);
   const organic = await get('/?campana=October&conjunto=A&anuncio=B&utm_campaign=legacy&fbclid=test');
   assert.equal(organic.status, 307);
