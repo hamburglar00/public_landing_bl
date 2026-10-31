@@ -6,6 +6,8 @@ import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import { notifyTemplate6CardClick } from '@/lib/landing/notifyTemplate6CardClick';
 import type { LandingConfig } from '@/lib/landing/types';
 import { validInlineEmail } from '@/lib/tracking/inlineEmail';
+import { getLandingFbc, type LandingAttribution } from '@/lib/tracking/landingFbc';
+import { META_EBP_COLLECTOR_URL } from '@/lib/meta/ebpAssetManifest';
 import { getOrCreateDeviceId } from '@/lib/reyDeAses/deviceId';
 import { fetchWithEntryRecovery } from '@/lib/reyDeAses/request-recovery';
 import {
@@ -45,6 +47,7 @@ type FbqFn = (command: string, ...args: unknown[]) => void;
 type MetaParamBuilderModule = typeof import('meta-capi-param-builder-clientjs');
 type MetaTrackingParams = {
   fbc: string;
+  landing_attribution?: LandingAttribution;
   fbp: string;
   clientIpAddress: string;
   clientIpIssuedAt: number | null;
@@ -436,7 +439,7 @@ async function sendTrackBestEffort(body: string) {
   await fetchFallback();
 }
 
-async function collectMetaTrackingParams() {
+async function collectMetaTrackingParams(config: LandingConfig, slug: string) {
   if (typeof window === 'undefined') {
     return {
       fbc: '',
@@ -447,6 +450,7 @@ async function collectMetaTrackingParams() {
     };
   }
 
+  const scopedFbc = getLandingFbc({ landingId: config.id, slug, workspaceCurrency: resolveWorkspaceCurrency(config), pixelId: config.tracking.pixelId });
   const cachedIpProof = getCachedMetaClientIpProof();
   try {
     const sdk = await loadMetaParamBuilder();
@@ -470,7 +474,7 @@ async function collectMetaTrackingParams() {
     const sdk = await loadMetaParamBuilder();
     const latestIpProof = getCachedMetaClientIpProof();
     return {
-      fbc: sdk.getFbc() || getCookieValue('_fbc'),
+      ...scopedFbc.collect(),
       fbp: sdk.getFbp() || getCookieValue('_fbp'),
       clientIpAddress: latestIpProof.clientIpAddress || sdk.getClientIpAddress() || '',
       clientIpIssuedAt: latestIpProof.clientIpIssuedAt,
@@ -479,7 +483,7 @@ async function collectMetaTrackingParams() {
   } catch {
     const latestIpProof = getCachedMetaClientIpProof();
     return {
-      fbc: getCookieValue('_fbc'),
+      ...scopedFbc.collect(),
       fbp: getCookieValue('_fbp'),
       ...latestIpProof
     };
@@ -648,7 +652,7 @@ export default function WhatsAppButton({
 
   function collectMetaTrackingParamsOnce() {
     if (!metaTrackingPromiseRef.current) {
-      metaTrackingPromiseRef.current = collectMetaTrackingParams()
+      metaTrackingPromiseRef.current = collectMetaTrackingParams(config, slug)
         .then((value) => {
           metaTrackingRef.current = value;
           return value;
@@ -758,6 +762,8 @@ export default function WhatsAppButton({
     let fallbackTimerId: number | null = null;
 
     const collectIpInBackground = () => {
+      const scopedFbc = getLandingFbc({ landingId: config.id, slug, workspaceCurrency: resolveWorkspaceCurrency(config), pixelId: config.tracking.pixelId });
+      void scopedFbc.collectNative(META_EBP_COLLECTOR_URL);
       void collectMetaClientIpProof().then(async (ipProof) => {
         if (cancelled || !ipProof.clientIpAddress) return;
         try {
@@ -768,7 +774,7 @@ export default function WhatsAppButton({
           );
           if (cancelled) return;
           metaTrackingRef.current = {
-            fbc: sdk.getFbc() || metaTrackingRef.current.fbc || getCookieValue('_fbc'),
+            ...scopedFbc.collect(),
             fbp: sdk.getFbp() || metaTrackingRef.current.fbp || getCookieValue('_fbp'),
             ...ipProof
           };
@@ -977,7 +983,8 @@ export default function WhatsAppButton({
         gatewayMode ? waitWithTimeout(ensureAtrioPromise(), 1500) : Promise.resolve(null)
       ]);
       const fbp = metaTracking.fbp;
-      const fbc = metaTracking.fbc;
+      const attribution = getLandingFbc({ landingId: config.id, slug, workspaceCurrency: resolveWorkspaceCurrency(config), pixelId: config.tracking.pixelId }).collect();
+      const fbc = attribution.fbc;
       const clientIpAddress = metaTracking.clientIpAddress;
       const clientIpIssuedAt = metaTracking.clientIpIssuedAt;
       const clientIpProof = metaTracking.clientIpProof;
@@ -1124,6 +1131,7 @@ export default function WhatsAppButton({
         test_event_code: testEventCode || undefined,
         fbp,
         fbc,
+        landing_attribution: attribution.landing_attribution,
         client_ip_address: clientIpAddress || undefined,
         client_ip_issued_at: clientIpIssuedAt || undefined,
         client_ip_proof: clientIpProof || undefined,

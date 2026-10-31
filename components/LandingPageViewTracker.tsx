@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { captureLandingResolution } from '@/lib/landing/resolution';
+import { getLandingFbc } from '@/lib/tracking/landingFbc';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
 import type { LandingConfig, LandingPhoneResponse } from '@/lib/landing/types';
 import {
@@ -230,7 +231,8 @@ export default function LandingPageViewTracker({ slug, config }: Props) {
     }
 
     writeLocalStorage(storageNamespace, 'external_id', externalId);
-    const fbc = getCookieValue('_fbc');
+    const attribution = getLandingFbc({ landingId: config.id, slug, workspaceCurrency: resolveWorkspaceCurrency(config), pixelId: config.tracking.pixelId }).collect();
+    const fbc = attribution.fbc;
     const payload = {
       event_name: 'PageView',
       slug,
@@ -249,7 +251,8 @@ export default function LandingPageViewTracker({ slug, config }: Props) {
       utm_campaign: params.get('utm_campaign') || '',
       fbp: getCookieValue('_fbp'),
       fbc,
-      from_meta_ads: Boolean(fbc || params.get('fbclid')),
+      landing_attribution: attribution.landing_attribution,
+      from_meta_ads: Boolean(fbc),
       meta_pixel_id: String(config.tracking.pixelId || '').trim() || undefined,
       device_type: getDeviceType(),
       client_user_agent: navigator.userAgent || undefined
