@@ -29,6 +29,7 @@ import {
 } from "./integrations.server";
 import { normalizeArgentinaWhatsapp } from "../landing/argentinaWhatsapp";
 import { validateEntryFunnelContext, type EntryFunnelContext } from "../landing/entryFunnel";
+import { recordConfirmedAccountRegistration, type ConfirmedAccountRegistration } from "./registrationStats.server";
 
 type LandingRow = { id: string; name: string; user_id: string; workspace_currency: string; config: unknown; landing_config: unknown };
 type AssignmentRow = { landing_id: string; atrio_client_id: string; user_id: string };
@@ -45,6 +46,7 @@ export type StartDb = {
 };
 
 export type StartDependencies = {
+  recordAccountCreated?(input: ConfirmedAccountRegistration): void;
   db: StartDb;
   api2Status(): "api2_not_configured" | "integration_pending" | null;
   gatewayStatus?(provider: TargetProvider): "integration_pending" | null;
@@ -206,6 +208,12 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       advisor_slug: assigned.advisorSlug, target_provider: provider, ...(skinCode ? { skin_code: skinCode } : {}),
     });
     const accountMs = Math.round(performance.now() - accountStartedAt);
+    if (account.created && account.platform === provider && account.username && account.password) {
+      try {
+        deps.recordAccountCreated?.({ userId: landing.user_id, landingId: landing.id,
+          promoCode: payload.promo_code, providerAccountId: player.player_provider_account_id, agencyId: player.agency_id });
+      } catch { /* Statistics must not change the account's normal handoff. */ }
+    }
     const funnel = payload.entry_funnel ? { ...payload.entry_funnel, account_kind: account.created ? "new" as const : "existing" as const } : undefined;
     const finalizeStartedAt = performance.now();
     async function timed<T>(stage: "link" | "handoff", task: () => Promise<T>): Promise<T> {
@@ -275,6 +283,7 @@ function productionDb(): StartDb {
 
 export function productionDependencies(): StartDependencies {
   return {
+    recordAccountCreated: recordConfirmedAccountRegistration,
     db: productionDb(), api2Status: api2Readiness, gatewayStatus: gatewayReadiness,
     resolvePlayer: resolveInternalChatPlayer, resolveAccount: resolveTargetAccount,
     linkProviderAccount: linkInternalChatProviderAccount, createHandoff: createProviderHandoff,

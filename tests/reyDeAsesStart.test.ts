@@ -12,6 +12,26 @@ const playerId = "55555555-5555-4555-8555-555555555555";
 const ownerId = "66666666-6666-4666-8666-666666666666";
 const providerAccountId = "77777777-7777-4777-8777-777777777777";
 
+test("classic entry records confirmed new accounts internally and never recovered accounts", async () => {
+  for (const created of [true, false]) {
+    const { deps } = dependencies();
+    const original = deps.resolveAccount;
+    deps.resolveAccount = async input => ({ ...await original(input), created });
+    const outcomes: unknown[] = [];
+    deps.recordAccountCreated = outcome => { outcomes.push(outcome); };
+    const result = await handleReyStart(request(validPayload), deps);
+    assert.equal(result.status, 200);
+    assert.equal(outcomes.length, created ? 1 : 0);
+    if (created) assert.deepEqual(outcomes[0], { userId: ownerId, landingId, promoCode: "LP-a1b2", providerAccountId, agencyId: 272 });
+  }
+});
+
+test("classic entry keeps working when internal statistics cannot be scheduled", async () => {
+  const { deps } = dependencies();
+  deps.recordAccountCreated = () => { throw new Error("statistics unavailable"); };
+  assert.equal((await handleReyStart(request(validPayload), deps)).status, 200);
+});
+
 const validPayload = {
   landing_id: landingId, landing_slug: "landing-7", name: "Martín", device_id: deviceId,
   atrio_client_id: clientId, advisor_id: advisorId, advisor_slug: "gera", promo_code: "LP-a1b2",
