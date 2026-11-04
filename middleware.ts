@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
       && ['GET', 'HEAD'].includes(request.method) && request.headers.get('rsc') !== '1') {
     try {
       const landing = await getLandingConfig(slug);
-      if (landing?.layout?.template === 7 || landing?.layout?.template === 8) {
+      if (landing?.layout?.template === 7 || landing?.layout?.template === 8 || landing?.layout?.template === 9) {
         return new NextResponse(request.method === 'HEAD' ? null : renderClassicTemplate7Html({
           slug, config: landing, canonicalUrl: `${request.nextUrl.origin}/${encodeURIComponent(slug)}`,
         }, buildDeviceIdRuntimeScript()), { headers: {

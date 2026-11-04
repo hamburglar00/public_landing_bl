@@ -1,3 +1,4 @@
+import { template7ServerTiming, type Template7StageTimings } from "./performance.server";
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
 import { template8Provider, template8SkinCode } from "../landing/template8";
 import { resolveEffectiveLandingConfig } from "../landing/effectiveLandingConfig";
@@ -104,7 +105,7 @@ export function isTemplate7Landing(landing: LandingRow): boolean {
   const raw = rawConfig(landing);
   const published = landing.landing_config && typeof landing.landing_config === "object" ? landing.landing_config as Record<string, unknown> : {};
   const layout = published.layout && typeof published.layout === "object" ? published.layout as Record<string, unknown> : {};
-  return (raw.template === "template7" || raw.template === "template8" || layout.template === 7) && raw.ctaDestination === "atrio";
+  return (raw.template === "template7" || raw.template === "template8" || raw.template === "template9" || layout.template === 7 || layout.template === 9) && raw.ctaDestination === "atrio";
 }
 
 export function configuredProvider(landing: LandingRow): TargetProvider | null {
@@ -141,6 +142,8 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
   } catch { return json({ error: "invalid_request" }, 400); }
   if (!payload) return json({ error: "invalid_request" }, 400);
 
+  const flowStartedAt = performance.now();
+  const stageTimings: Template7StageTimings = {};
   try {
     let landing: LandingRow;
     let provider: TargetProvider;
@@ -177,6 +180,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       advisor = selectedAdvisor;
     }
 
+    stageTimings.context = Math.round(performance.now() - flowStartedAt);
     const effectiveConfig = rawConfig(landing);
     const effectiveProvider = effectiveConfig.template === "template8" ? template8Provider(effectiveConfig, payload.card_index) : configuredProvider(landing);
     if (effectiveProvider !== provider) return json({ error: "integration_pending" }, 503);
@@ -191,18 +195,32 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       advisor: assigned, deviceId: effectiveDeviceId, name: payload.name, ...(payload.phone ? { phone: payload.phone } : {}),
       landingId: landing.id, landingSlug: landing.name, promoCode: payload.promo_code, targetProvider: provider,
     };
+    const identityStartedAt = performance.now();
     const player = await deps.resolvePlayer(playerInput);
+    stageTimings.identity = Math.round(performance.now() - identityStartedAt);
     if (player.target_provider !== provider || player.device_id !== effectiveDeviceId) throw new TargetIntegrationError("upstream_unavailable");
+    const accountStartedAt = performance.now();
     const account = await deps.resolveAccount({
       external_user_id: player.player_id,
           manager_id: player.manager_id, agency_id:player.agency_id, name: payload.name, advisor_id: assigned.advisorId,
       advisor_slug: assigned.advisorSlug, target_provider: provider, ...(skinCode ? { skin_code: skinCode } : {}),
     });
+    const accountMs = Math.round(performance.now() - accountStartedAt);
+    const funnel = payload.entry_funnel ? { ...payload.entry_funnel, account_kind: account.created ? "new" as const : "existing" as const } : undefined;
+    const finalizeStartedAt = performance.now();
+    async function timed<T>(stage: "link" | "handoff", task: () => Promise<T>): Promise<T> {
+      const startedAt = performance.now();
+      try { return await task(); } finally { stageTimings[stage] = Math.round(performance.now() - startedAt); }
+    }
     const [, handoff] = await Promise.all([
-      deps.linkProviderAccount?.(assigned, player, account),
-      deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, payload.entry_funnel),
+      timed("link", async () => deps.linkProviderAccount?.(assigned, player, account)),
+      timed("handoff", () => deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, funnel)),
     ]);
-    return json({ handoff_url: handoff.handoff_url }, 200);
+    stageTimings.finalize = Math.round(performance.now() - finalizeStartedAt);
+    stageTimings.total = Math.round(performance.now() - flowStartedAt);
+    const response = json({ handoff_url: handoff.handoff_url }, 200);
+    response.headers.set("Server-Timing", template7ServerTiming(accountMs, account.created, stageTimings, account.provisionTiming));
+    return response;
   } catch (error) {
     if (error instanceof TargetIntegrationError) return json({ error: error.code, retryable: error.retryable }, 503);
     return json({ error: "service_unavailable" }, 503);

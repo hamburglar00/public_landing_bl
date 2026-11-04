@@ -1,3 +1,4 @@
+import { safeProvisionTiming } from "./performance.server";
 import type {
   AssignedAdvisor,
   Api2ResolveAccountRequest,
@@ -144,7 +145,8 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
         !password || password.length > 256 || /[\x00-\x1f\x7f]/.test(password) || created === null || data.platform !== platforms[request.target_provider]) {
       throw new TargetIntegrationError("upstream_unavailable");
     }
-    return { username, password, platform: request.target_provider, created, externalAccountId: request.external_user_id };
+    const provisionTiming = safeProvisionTiming(response.headers.get("server-timing"));
+    return { username, password, platform: request.target_provider, created, externalAccountId: request.external_user_id, ...(provisionTiming ? { provisionTiming } : {}) };
   } catch (error) {
     if (error instanceof TargetIntegrationError) throw error;
     throw new TargetIntegrationError("upstream_unavailable");

@@ -213,3 +213,18 @@ test("adaptadores usan contrato servidor-servidor y no exponen credenciales", as
     if (oldGatewayKey === undefined) delete process.env.REY_GATEWAY_HANDOFF_API_KEY; else process.env.REY_GATEWAY_HANDOFF_API_KEY = oldGatewayKey;
   }
 });
+
+test("Template 9 classic preserves the existing T7 identity, account and handoff", async () => {
+  const { deps, calls } = dependencies();
+  const read = deps.db.landing;
+  deps.db.landing = async id => {
+    const row = (await read(id))!;
+    return { ...row, config: { template: "template9", ctaDestination: "atrio" }, landing_config: { layout: { template: 9 } } };
+  };
+  const response = await handleReyStart(request(validPayload), deps);
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /handoff_url/);
+  assert.doesNotMatch(body, /secret-user|secret-pass/);
+  assert.equal(calls.filter(call => call === "api2").length, 1);
+});
