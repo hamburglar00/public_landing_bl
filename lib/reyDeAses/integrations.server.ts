@@ -66,6 +66,7 @@ export function api2Readiness(): "api2_not_configured" | "integration_pending" |
 }
 
 export function gatewayReadiness(provider: TargetProvider): "integration_pending" | null {
+  if (provider === "multi_skin" && process.env.MULTI_SKIN_GATEWAY_BASE_DOMAIN) return null;
   const origin = gatewayOriginFor(provider, null);
   return origin ? null : "integration_pending";
 }
