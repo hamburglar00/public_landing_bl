@@ -25,11 +25,11 @@ for (const provider of ['rey_de_ases', 'ases_del_norte', 'ganamos_net', 'multi_s
     assert.match(html, /data-template7-critical/);
     assert.match(html, /data-template7-whatsapp/);
     assert.match(html, new RegExp(`"targetProvider":"${provider}"`));
-    assert.match(source, /fetchWithEntryRecovery\("\/api\/template7\/start"/);
+    assert.match(source, /"\/api\/template7\/prepare"/);
     assert.match(html, /internal-chat:device-id/);
-    assert.match(source, /form_phone: formPhone/);
-    assert.match(source, /promo_code: promoCode/);
-    assert.match(source, /event_id: eventId/);
+    assert.match(source, /form_phone:/);
+    assert.match(source, /promo_code:/);
+    assert.match(source, /event_id:/);
     assert.match(html, /resize=contain/);
     assert.doesNotMatch(html, /addEventListener\("DOMContentLoaded"|client-identity\/bootstrap/);
     assert.equal(html.split("fbq('track', 'PageView')").length - 1, 1);

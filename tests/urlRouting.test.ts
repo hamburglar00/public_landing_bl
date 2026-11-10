@@ -6,9 +6,9 @@ import { fallbackDestination, landingOverride } from '../lib/landing/urlRouting'
 
 test('Diana overrides Gast with future Meta fields and preserves the same origin and attribution',async()=>{
   const input=new NextRequest('https://landing.test/gast?landing=diana&new_meta_field=x&new_meta_field=y&fbclid=original&utm_source=facebook&return_to=https://evil.test');
-  input.headers.set('rsc', '1'); // Route selection test: skip the separate public config/render lookup.
+  input.headers.set('rsc', '1');
   const rewritten=new URL((await middleware(input)).headers.get('x-middleware-rewrite')!);
-  assert.equal(rewritten.origin,input.nextUrl.origin);assert.equal(rewritten.pathname,'/diana');
+  assert.equal(rewritten.origin,input.nextUrl.origin);assert.equal(rewritten.pathname,'/api/landing-html/diana');
   assert.equal(rewritten.search,input.nextUrl.search);
 });
 
@@ -17,7 +17,7 @@ test('query overrides the path and preserves attribution without a browser redir
     const url = new URL(`${path}?landing=bianca2&campana=Octubre&conjunto=A%2BB&anuncio=7&utm_campaign=legacy&fbclid=click`, 'https://landing.test');
     const response = await middleware(new NextRequest(url, { headers: { rsc: '1' } }));
     const target = new URL(response.headers.get('x-middleware-rewrite')!);
-    assert.equal(target.pathname.replace(/\/$/, ''), '/bianca2');
+    assert.equal(target.pathname.replace(/\/$/, ''), '/api/landing-html/bianca2');
     assert.equal(target.search, url.search);
     assert.equal(response.headers.get('location'), null);
   }

@@ -1,0 +1,10 @@
+# Content-addressed programs and generated contracts must keep identical bytes
+# on Windows and Linux. Their filenames/manifests are derived from UTF-8 LF.
+/public/public-assets/template-entry/* text eol=lf
+/lib/template7/*.cjs text eol=lf
+/lib/landing/analytics.generated.json text eol=lf
+/lib/landing/entryFunnel.ts text eol=lf
+/lib/landing/resolution.ts text eol=lf
+/lib/reyDeAses/handoff-url.ts text eol=lf
+/lib/reyDeAses/registrationStats.server.ts text eol=lf
+/lib/tracking/landingFbc.ts text eol=lf

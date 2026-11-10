@@ -5,7 +5,10 @@ export function renderClassicTemplate7InlineHtml(
   params: { slug: string; config: LandingConfig },
   deviceIdScript: string,
 ): string;
-export function template7RuntimeAssetResponse(name: string): Response;
+export function renderClassicPublicLandingHtml(
+  params: { slug: string; config: LandingConfig; canonicalUrl?: string },
+  deviceIdScript: string,
+): string;
 export function renderClassicTemplate7Html(
   params: { slug: string; config: LandingConfig; canonicalUrl?: string },
   deviceIdScript: string,

@@ -52,50 +52,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const path = `/${name}`;
+    const path = `/${encodeURIComponent(name)}`;
     revalidatePath(path);
+    revalidatePath(`/api/landing-html/${encodeURIComponent(name)}`);
     revalidateTag(`landing-config:${name}`);
 
-    const origin = new URL(req.url).origin;
-    const warmSlug = encodeURIComponent(name);
-
-    const ts = Date.now();
-    const warmConfigUrl = `${origin}/api/config?name=${warmSlug}&_ts=${ts}`;
-    const warmPageUrl = `${origin}/${warmSlug}?warm=1&_ts=${ts}`;
-
-    const warmFetch = async (url: string): Promise<boolean> => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, max-age=0',
-            Pragma: 'no-cache',
-          },
-          signal: controller.signal,
-        });
-        return res.ok;
-      } catch {
-        return false;
-      } finally {
-        clearTimeout(timeout);
-      }
-    };
-
-    const warmedConfig = await warmFetch(warmConfigUrl);
-
-    let warmedPage = await warmFetch(warmPageUrl);
-    let warmedPageRetry = false;
-    if (!warmedPage) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      warmedPageRetry = true;
-      warmedPage = await warmFetch(warmPageUrl);
-    }
-
+    // Publication's caller warms the canonical page after this response: Next
+    // commits invalidation at the end of the request. Keep legacy fields honest.
     return NextResponse.json(
-      { revalidated: true, path, warmedConfig, warmedPage, warmedPageRetry },
+      { revalidated: true, path, warmedConfig: false, warmedPage: false, warmedPageRetry: false },
       { headers: cors }
     );
   } catch (error: unknown) {
