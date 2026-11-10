@@ -1,4 +1,5 @@
-import { template7ServerTiming, type Template7StageTimings } from "./performance.server";
+import { entryRequestTrace } from "../landing/entryFunnel.server";
+import { timedServerStage, logServerFlowTotal, template7ServerTiming, type Template7StageTimings } from "./performance.server";
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
 import { template8Provider, template8SkinCode } from "../landing/template8";
 import { resolveEffectiveLandingConfig } from "../landing/effectiveLandingConfig";
@@ -145,13 +146,14 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
   if (!payload) return json({ error: "invalid_request" }, 400);
 
   const flowStartedAt = performance.now();
+  const trace = entryRequestTrace(request, payload.entry_funnel);
   const stageTimings: Template7StageTimings = {};
   try {
     let landing: LandingRow;
     let provider: TargetProvider;
     let advisor: AdvisorRow;
     if (deps.db.context) {
-      const context = await bounded(deps.db.context(request, payload));
+      const context = await timedServerStage("template7_start", "context_transaction", () => bounded(deps.db.context!(request, payload!)), undefined, trace);
       if (context.status !== "ok" || !context.landing || !context.provider || !context.advisor) {
         const status = context.status === "landing_not_found" ? 404
           : context.status === "landing_unavailable" || context.status === "advisor_not_assigned" ? 403
@@ -198,15 +200,15 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       landingId: landing.id, landingSlug: landing.name, promoCode: payload.promo_code, targetProvider: provider,
     };
     const identityStartedAt = performance.now();
-    const player = await deps.resolvePlayer(playerInput);
+    const player = await timedServerStage("template7_start", "internal_chat_resolve", () => deps.resolvePlayer(playerInput), undefined, trace);
     stageTimings.identity = Math.round(performance.now() - identityStartedAt);
     if (player.target_provider !== provider || player.device_id !== effectiveDeviceId) throw new TargetIntegrationError("upstream_unavailable");
     const accountStartedAt = performance.now();
-    const account = await deps.resolveAccount({
+    const account = await timedServerStage("template7_start", "account_resolve", () => deps.resolveAccount({
       external_user_id: player.player_id,
           manager_id: player.manager_id, agency_id:player.agency_id, name: payload.name, advisor_id: assigned.advisorId,
       advisor_slug: assigned.advisorSlug, target_provider: provider, ...(skinCode ? { skin_code: skinCode } : {}),
-    });
+    }), undefined, trace);
     const accountMs = Math.round(performance.now() - accountStartedAt);
     if (account.created && account.platform === provider && account.username && account.password) {
       try {
@@ -218,7 +220,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     const finalizeStartedAt = performance.now();
     async function timed<T>(stage: "link" | "handoff", task: () => Promise<T>): Promise<T> {
       const startedAt = performance.now();
-      try { return await task(); } finally { stageTimings[stage] = Math.round(performance.now() - startedAt); }
+      try { return await timedServerStage("template7_start", stage === "link" ? "internal_chat_account_link" : "gateway_handoff", task, undefined, trace); } finally { stageTimings[stage] = Math.round(performance.now() - startedAt); }
     }
     const [, handoff] = await Promise.all([
       timed("link", async () => deps.linkProviderAccount?.(assigned, player, account)),
@@ -232,7 +234,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
   } catch (error) {
     if (error instanceof TargetIntegrationError) return json({ error: error.code, retryable: error.retryable }, 503);
     return json({ error: "service_unavailable" }, 503);
-  }
+  } finally { logServerFlowTotal("template7_start", flowStartedAt, trace); }
 }
 
 export const handleReyStart = handleTemplate7Start;

@@ -12,6 +12,30 @@ const playerId = "55555555-5555-4555-8555-555555555555";
 const ownerId = "66666666-6666-4666-8666-666666666666";
 const providerAccountId = "77777777-7777-4777-8777-777777777777";
 
+test("classic fallback correlates server phases without logging player or account data", async (t) => {
+  const logs: Record<string, unknown>[] = [];
+  t.mock.method(console, "info", (line: string) => { logs.push(JSON.parse(line)); });
+  const { deps } = dependencies();
+  const requestId = "88888888-8888-4888-8888-888888888888";
+  const result = await handleReyStart(request(validPayload, { "x-entry-request-id": requestId, "x-entry-flow-id": "invalid-private-input" }), deps);
+  assert.equal(result.status, 200);
+  assert.deepEqual(logs.map(row => row.stage).sort(), ["internal_chat_resolve", "account_resolve", "internal_chat_account_link", "gateway_handoff", "total"].sort());
+  for (const row of logs) { assert.equal(row.request_id, requestId); assert.equal(row.flow_id, undefined); }
+  assert.doesNotMatch(JSON.stringify(logs), /secret-user|secret-pass|gera|invalid-private-input/);
+});
+
+test("classic fallback retains correlation on a provider failure without exposing its error", async (t) => {
+  const logs: Record<string, unknown>[] = [];
+  t.mock.method(console, "info", (line: string) => { logs.push(JSON.parse(line)); });
+  const { deps } = dependencies();
+  deps.resolveAccount = async () => { throw Error("private-provider-response"); };
+  const requestId = "99999999-9999-4999-8999-999999999999";
+  assert.equal((await handleReyStart(request(validPayload, { "x-entry-request-id": requestId }), deps)).status, 503);
+  assert.ok(logs.some(row => row.stage === "account_resolve" && row.result === "failure" && row.request_id === requestId));
+  assert.equal(logs.at(-1)?.stage, "total");
+  assert.doesNotMatch(JSON.stringify(logs), /private-provider-response/);
+});
+
 test("classic entry records confirmed new accounts internally and never recovered accounts", async () => {
   for (const created of [true, false]) {
     const { deps } = dependencies();
