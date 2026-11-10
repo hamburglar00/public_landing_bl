@@ -1,5 +1,5 @@
 import { getLandingConfig } from "@/lib/landing/getLandingConfig";
-import { renderTemplate9LegalHtml, TEMPLATE9_LEGAL_PAGES } from "@/lib/template7/shared.cjs";
+import { renderTemplate9LegalHtml, TEMPLATE9_LEGAL_PAGES, PUBLIC_LANDING_FAVICON_LINK } from "@/lib/template7/shared.cjs";
 
 export const revalidate = 60;
 export const dynamic = "force-static";
@@ -8,7 +8,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   const { slug, legal } = await context.params;
   if (!Object.hasOwn(TEMPLATE9_LEGAL_PAGES, legal)) return new Response("Not found", { status: 404 });
   const config = await getLandingConfig(slug);
-  const html = config && renderTemplate9LegalHtml(config, legal, `/${encodeURIComponent(slug)}`);
+  const html = config && renderTemplate9LegalHtml(config, legal, `/${encodeURIComponent(slug)}`)?.replace('</head>', `${PUBLIC_LANDING_FAVICON_LINK}</head>`);
   return new Response(html || "Not found", {
     status: html ? 200 : 404,
     headers: {

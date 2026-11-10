@@ -1,5 +1,6 @@
 import type { LandingConfig } from "../landing/types";
 export const TEMPLATE9_LEGAL_PAGES: Record<string, string>;
+export const PUBLIC_LANDING_FAVICON_LINK: string;
 export function renderTemplate9LegalHtml(config: LandingConfig, page: string, basePath: string): string | null;
 export function renderClassicTemplate7InlineHtml(
   params: { slug: string; config: LandingConfig },
