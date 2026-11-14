@@ -272,3 +272,19 @@ test("Template 9 classic preserves the existing T7 identity, account and handoff
   assert.doesNotMatch(body, /secret-user|secret-pass/);
   assert.equal(calls.filter(call => call === "api2").length, 1);
 });
+
+test("classic entry uses saved per-landing policy without changing legacy behavior", async () => {
+  for (const policy of [undefined, { mode: "direct", seconds: 4 }, { mode: "credentials", seconds: 9 }]) {
+    const { deps } = dependencies(), read = deps.db.landing, create = deps.createHandoff;
+    deps.db.landing = async id => {
+      const row = (await read(id))!;
+      return { ...row, config: { ...(row.config as object), ...(policy ? { gatewayEntry: policy } : {}) } };
+    };
+    const seen: unknown[] = [];
+    deps.createHandoff = async (...args) => { seen.push(args[8]); return create(...args); };
+    const response = await handleReyStart(request(validPayload), deps);
+    assert.equal(response.status, 200);
+    assert.deepEqual(seen, [policy ? { enabled: policy.mode === "credentials", seconds: policy.seconds,
+      continueButtonEnabled: policy.mode === "credentials" } : undefined]);
+  }
+});

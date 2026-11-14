@@ -1,3 +1,4 @@
+import type { GatewayEntryWait } from "../landing/gatewayEntry";
 import { safeProvisionTiming } from "./performance.server";
 import type {
   AssignedAdvisor,
@@ -187,6 +188,7 @@ export async function createProviderHandoff(
   skinCode: MultiSkinCode | null = null,
   promoCode?: string,
   entryFunnel?: import("../landing/entryFunnel").EntryFunnelContext,
+  entryWait?: GatewayEntryWait,
 ): Promise<HandoffResult> {
   const origin = configuredOrigin(gatewayOriginFor(provider, skinCode));
   if (player.target_provider !== provider || account.platform !== provider || (provider === "multi_skin" && !skinCode) ||
@@ -204,6 +206,7 @@ export async function createProviderHandoff(
       target_provider: provider,
       ...(promoCode ? { promo_code: promoCode } : {}),
       ...(entryFunnel ? { entry_funnel: entryFunnel } : {}),
+    ...(entryWait ? { entry_wait: entryWait } : {}),
       ...(provider === "rey_de_ases" ? {
         platform: provider, username: account.username, password: account.password, target_path: "/casino/list/home",
       } : provider === "multi_skin" ? {
