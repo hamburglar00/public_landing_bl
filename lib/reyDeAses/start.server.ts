@@ -1,3 +1,4 @@
+import { gatewayEntryWait, type GatewayEntryWait } from "../landing/gatewayEntry";
 import { entryRequestTrace } from "../landing/entryFunnel.server";
 import { timedServerStage, logServerFlowTotal, template7ServerTiming, type Template7StageTimings } from "./performance.server";
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
@@ -54,7 +55,7 @@ export type StartDependencies = {
   resolvePlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer>;
   resolveAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount>;
   linkProviderAccount?(advisor: AssignedAdvisor, player: ResolvedPlayer, account: TargetAccount): Promise<LinkedProviderAccount>;
-  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string, entryFunnel?: EntryFunnelContext): Promise<HandoffResult>;
+  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string, entryFunnel?: EntryFunnelContext, entryWait?: GatewayEntryWait): Promise<HandoffResult>;
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -224,7 +225,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     }
     const [, handoff] = await Promise.all([
       timed("link", async () => deps.linkProviderAccount?.(assigned, player, account)),
-      timed("handoff", () => deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, funnel)),
+      timed("handoff", () => deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, funnel, gatewayEntryWait(effectiveConfig.gatewayEntry))),
     ]);
     stageTimings.finalize = Math.round(performance.now() - finalizeStartedAt);
     stageTimings.total = Math.round(performance.now() - flowStartedAt);
