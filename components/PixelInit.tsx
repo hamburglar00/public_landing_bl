@@ -215,7 +215,7 @@ export default function PixelInit({
                 external_id: meta.externalId || undefined
               });
 
-              fbq('track', 'PageView');
+              fbq('trackSingle', '${normalizedPixelId}', 'PageView');
             } catch (e) {
               console.error('Meta Pixel init error', e);
             }

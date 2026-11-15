@@ -32,7 +32,7 @@ for (const provider of ['rey_de_ases', 'ases_del_norte', 'ganamos_net', 'multi_s
     assert.match(source, /event_id:/);
     assert.match(html, /resize=contain/);
     assert.doesNotMatch(html, /addEventListener\("DOMContentLoaded"|client-identity\/bootstrap/);
-    assert.equal(html.split("fbq('track', 'PageView')").length - 1, 1);
+    assert.equal(html.split("fbq('trackSingle', \"123456\", 'PageView')").length - 1, 1);
     for (const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new Script(match[1]);
     new Script(source);
   });

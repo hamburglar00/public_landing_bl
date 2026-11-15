@@ -1046,14 +1046,17 @@ export default function WhatsAppButton({
 
       // Pixel Contact con eventID y parámetros, solo cuando hay teléfono válido.
       try {
+        const pixelId = String(config.tracking.pixelId || '').replace(/\D+/g, '');
         if (
           sendContactPixel &&
+          pixelId &&
           !shouldSkipContact &&
           typeof window !== 'undefined' &&
           window.fbq
         ) {
           window.fbq(
-            'track',
+            'trackSingle',
+            pixelId,
             'Contact',
             { source: 'main_button' },
             { eventID: eventId }
