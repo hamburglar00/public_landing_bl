@@ -198,6 +198,7 @@ export async function createProviderHandoff(
   const result = await postJson(origin,
     "/api/handoffs",
     gatewayApiKey(provider), {
+      ...(player.agency_id ? { agency_id: player.agency_id } : {}),
       advisor_id: advisor.advisorId,
       advisor_slug: advisor.advisorSlug,
       device_id: deviceId,
