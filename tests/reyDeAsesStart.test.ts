@@ -273,6 +273,23 @@ test("Template 9 classic preserves the existing T7 identity, account and handoff
   assert.equal(calls.filter(call => call === "api2").length, 1);
 });
 
+test("classic T7 and T9 greet an existing account only in the published credentials mode", async () => {
+  for (const template of [7,9]) for (const mode of ["credentials","direct"]) {
+    const {deps}=dependencies(), read=deps.db.landing, account=deps.resolveAccount;
+    const policy={mode,seconds:4};
+    deps.db.landing=async id=>({ ...(await read(id))!, config:{template:"template"+template,ctaDestination:"atrio",gatewayEntry:policy},
+      landing_config:{layout:{template},gatewayEntry:policy} });
+    deps.resolveAccount=async input=>({...await account(input),created:false});
+    let returning: unknown;
+    deps.createHandoff=async (...args)=>{
+      returning=args[10]; assert.equal(args[9],false); assert.equal(args[4].username,"secret-user");
+      return {handoff_url:"https://gateway.example.com/start?t=token",expires_at:"2026-10-08T12:00:00Z",binding_created:false};
+    };
+    assert.equal((await handleReyStart(request(validPayload),deps)).status,200);
+    assert.equal(returning,mode==="credentials" ? true : "direct");
+  }
+});
+
 test("classic entry uses saved per-landing policy without changing legacy behavior", async () => {
   for (const policy of [undefined, { mode: "direct", seconds: 4 }, { mode: "credentials", seconds: 9 }]) {
     const { deps } = dependencies(), read = deps.db.landing, create = deps.createHandoff;

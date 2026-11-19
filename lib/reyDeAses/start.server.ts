@@ -1,4 +1,4 @@
-import { gatewayEntryWait, type GatewayEntryWait } from "../landing/gatewayEntry";
+import { usesAccountCreationScreen, gatewayEntryWait, type GatewayEntryWait } from "../landing/gatewayEntry";
 import { entryRequestTrace } from "../landing/entryFunnel.server";
 import { timedServerStage, logServerFlowTotal, template7ServerTiming, type Template7StageTimings } from "./performance.server";
 import { confirmTemplate8Destination } from "../atrio/template7Destination.server";
@@ -55,7 +55,7 @@ export type StartDependencies = {
   resolvePlayer(input: PlayerResolveRequest): Promise<ResolvedPlayer>;
   resolveAccount(request: Api2ResolveAccountRequest): Promise<TargetAccount>;
   linkProviderAccount?(advisor: AssignedAdvisor, player: ResolvedPlayer, account: TargetAccount): Promise<LinkedProviderAccount>;
-  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string, entryFunnel?: EntryFunnelContext, entryWait?: GatewayEntryWait): Promise<HandoffResult>;
+  createHandoff(provider: TargetProvider, advisor: AssignedAdvisor, deviceId: string, player: ResolvedPlayer, account: TargetAccount, skinCode: MultiSkinCode | null, promoCode?: string, entryFunnel?: EntryFunnelContext, entryWait?: GatewayEntryWait, newAccountCredentials?: boolean, returningAccount?: true | "direct"): Promise<HandoffResult>;
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -223,9 +223,17 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
       const startedAt = performance.now();
       try { return await timedServerStage("template7_start", stage === "link" ? "internal_chat_account_link" : "gateway_handoff", task, undefined, trace); } finally { stageTimings[stage] = Math.round(performance.now() - startedAt); }
     }
+    const configuredWait = gatewayEntryWait(effectiveConfig.gatewayEntry);
+    const creationScreen = usesAccountCreationScreen(landing.landing_config, effectiveConfig.template, configuredWait);
+    const entryWait = configuredWait && creationScreen && !account.created
+      ? { ...configuredWait, enabled: false, continueButtonEnabled: false }
+      : configuredWait;
+    const newAccountCredentials = creationScreen && account.created;
+    const returningAccount = !account.created && (effectiveConfig.template === "template7" || effectiveConfig.template === "template9")
+      ? creationScreen ? true : "direct" : undefined;
     const [, handoff] = await Promise.all([
       timed("link", async () => deps.linkProviderAccount?.(assigned, player, account)),
-      timed("handoff", () => deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, funnel, gatewayEntryWait(effectiveConfig.gatewayEntry))),
+      timed("handoff", () => deps.createHandoff(provider, assigned, effectiveDeviceId, player, account, skinCode, payload.promo_code, funnel, entryWait, newAccountCredentials, returningAccount)),
     ]);
     stageTimings.finalize = Math.round(performance.now() - finalizeStartedAt);
     stageTimings.total = Math.round(performance.now() - flowStartedAt);

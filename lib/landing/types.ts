@@ -1,5 +1,6 @@
 export type LandingConfig = {
   schemaVersion: number;
+  gatewayEntry?: import("./gatewayEntry").GatewayEntry;
   updatedAt: string;
   id: string;
   name: string;

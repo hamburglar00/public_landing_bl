@@ -189,6 +189,8 @@ export async function createProviderHandoff(
   promoCode?: string,
   entryFunnel?: import("../landing/entryFunnel").EntryFunnelContext,
   entryWait?: GatewayEntryWait,
+  newAccountCredentials = false,
+  returningAccount?: true | "direct",
 ): Promise<HandoffResult> {
   const origin = configuredOrigin(gatewayOriginFor(provider, skinCode));
   if (player.target_provider !== provider || account.platform !== provider || (provider === "multi_skin" && !skinCode) ||
@@ -208,6 +210,8 @@ export async function createProviderHandoff(
       ...(promoCode ? { promo_code: promoCode } : {}),
       ...(entryFunnel ? { entry_funnel: entryFunnel } : {}),
     ...(entryWait ? { entry_wait: entryWait } : {}),
+    ...(returningAccount && !account.created ? { returning_account: returningAccount } : {}),
+    ...(newAccountCredentials && account.created && entryWait?.continueButtonEnabled ? { new_account_credentials: true } : {}),
       ...(provider === "rey_de_ases" ? {
         platform: provider, username: account.username, password: account.password, target_path: "/casino/list/home",
       } : provider === "multi_skin" ? {
