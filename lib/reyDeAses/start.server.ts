@@ -214,7 +214,8 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     if (account.created && account.platform === provider && account.username && account.password) {
       try {
         deps.recordAccountCreated?.({ userId: landing.user_id, landingId: landing.id,
-          promoCode: payload.promo_code, providerAccountId: player.player_provider_account_id, agencyId: player.agency_id });
+          promoCode: payload.promo_code, providerAccountId: player.player_provider_account_id, agencyId: player.agency_id,
+          meta: { request, landing, fbc: payload.attribution?.fbc, fbp: payload.attribution?.fbp } });
       } catch { /* Statistics must not change the account's normal handoff. */ }
     }
     const funnel = payload.entry_funnel ? { ...payload.entry_funnel, account_kind: account.created ? "new" as const : "existing" as const } : undefined;
