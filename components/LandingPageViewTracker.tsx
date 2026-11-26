@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { META_EBP_COLLECTOR_URL } from '@/lib/meta/ebpAssetManifest';
 import { captureLandingResolution } from '@/lib/landing/resolution';
 import { getLandingFbc } from '@/lib/tracking/landingFbc';
 import { getLandingPhone } from '@/lib/landing/getLandingPhone';
@@ -209,9 +210,58 @@ function extractAssignedGerenciaSnapshot(phoneData: LandingPhoneResponse | null)
   };
 }
 
+function trackPaidViewContent(slug: string, config: LandingConfig) {
+  const pixel = String(config.tracking.pixelId || '').trim();
+  if (!pixel || !config.id || !window.crypto?.randomUUID) return;
+  const tracker = getLandingFbc({
+    landingId: config.id, slug, workspaceCurrency: resolveWorkspaceCurrency(config), pixelId: pixel,
+  });
+  const storageKey = 'atrio-meta-view-session:' + config.id;
+  let inFlight = false;
+
+  async function send() {
+    if (inFlight) return;
+    try {
+      const sentKey = storageKey + ':pixel';
+      if (sessionStorage.getItem(sentKey)) return;
+      const { fbc, landing_attribution } = tracker.collect();
+      if (!fbc || !landing_attribution || !['url', 'referrer', 'sdk_fresh'].includes(landing_attribution.fbc_source)) return;
+      let session = sessionStorage.getItem(storageKey);
+      if (!session) {
+        session = crypto.randomUUID();
+        sessionStorage.setItem(storageKey, session);
+      }
+      inFlight = true;
+      const response = await fetch('/api/journey-start', {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_name: 'AtrioMetaView', landing_id: config.id, slug, sessionId: session,
+          fbc, fbp: getCookieValue('_fbp'), provenance: landing_attribution,
+        }),
+      });
+      if (!response.ok) return;
+      const event = await response.json();
+      const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq;
+      if (!event?.eventId || event.pixel !== pixel || typeof fbq !== 'function' || sessionStorage.getItem(sentKey)) return;
+      fbq('trackSingle', pixel, 'ViewContent', {}, { eventID: event.eventId });
+      sessionStorage.setItem(sentKey, event.eventId);
+    } catch {
+      // Optional tracking must never delay the landing.
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  void send();
+  void tracker.collectNative(META_EBP_COLLECTOR_URL).then(send).catch(() => {});
+}
+
 export default function LandingPageViewTracker({ slug, config }: Props) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    trackPaidViewContent(slug, config);
 
     const storageNamespace = buildTrackingStorageNamespace(
       config.tracking.pixelId,
