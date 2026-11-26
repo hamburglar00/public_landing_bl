@@ -4,7 +4,7 @@ export const ENTRY_FUNNEL_EVENTS = [
   "page_visible", "form_visible", "name_focus", "name_started", "name_valid", "skin_selected",
   "cta_clicked", "destination_ready", "account_ready", "login_confirmed", "gateway_loaded",
   "iframe_loaded", "chat_bootstrap_ready", "welcome_ready", "wallet_ready",
-  "chat_usable", "chat_ready", "entry_error", "visibility_hidden", "resumed", "stage_timing", "casino_account_ready", "entry_retry", "attempt_started", "cta_available", "outbound_requested",
+  "chat_usable", "chat_ready", "entry_error", "visibility_hidden", "resumed", "stage_timing", "casino_account_ready", "entry_retry", "attempt_started", "cta_available", "outbound_requested", "credentials_visible", "continue_clicked", "access_ready",
 ] as const;
 export const ENTRY_FUNNEL_PHASES = [
   "phone_owner", "phone_plan", "phone_cache", "phone_select", "phone_total",

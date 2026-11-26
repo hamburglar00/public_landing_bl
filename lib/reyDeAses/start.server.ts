@@ -206,7 +206,7 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     if (player.target_provider !== provider || player.device_id !== effectiveDeviceId) throw new TargetIntegrationError("upstream_unavailable");
     const accountStartedAt = performance.now();
     const account = await timedServerStage("template7_start", "account_resolve", () => deps.resolveAccount({
-      external_user_id: player.player_id,
+      external_user_id: player.player_id, ...("request_id" in trace ? { request_id: String(trace.request_id) } : {}),
           manager_id: player.manager_id, agency_id:player.agency_id, name: payload.name, advisor_id: assigned.advisorId,
       advisor_slug: assigned.advisorSlug, target_provider: provider, ...(skinCode ? { skin_code: skinCode } : {}),
     }), undefined, trace);
@@ -234,7 +234,11 @@ export async function handleTemplate7Start(request: Request, deps: StartDependen
     response.headers.set("Server-Timing", template7ServerTiming(accountMs, account.created, stageTimings, account.provisionTiming));
     return response;
   } catch (error) {
-    if (error instanceof TargetIntegrationError) return json({ error: error.code, retryable: error.retryable }, 503);
+    if (error instanceof TargetIntegrationError) {
+      const response = json({ error: error.code, retryable: error.retryable }, 503);
+      if (error.provisionTiming) response.headers.set("Server-Timing", error.provisionTiming);
+      return response;
+    }
     return json({ error: "service_unavailable" }, 503);
   } finally { logServerFlowTotal("template7_start", flowStartedAt, trace); }
 }

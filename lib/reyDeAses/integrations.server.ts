@@ -16,7 +16,7 @@ import { canonicalStartHandoffUrl } from "./handoff-url";
 import { gatewayOriginFor } from "./gatewayOrigins";
 
 export class TargetIntegrationError extends Error {
-  constructor(public readonly code: "api2_not_configured" | "integration_pending" | "upstream_unavailable", public readonly retryable = code === "upstream_unavailable") {
+  constructor(public readonly code: "api2_not_configured" | "integration_pending" | "upstream_unavailable", public readonly retryable = code === "upstream_unavailable", public readonly provisionTiming = "") {
     super(code);
   }
 }
@@ -127,15 +127,17 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
   try {
     const response = await fetch(new URL(`/api/v1/bot/managers/${request.manager_id}/players`, configuredOrigin(process.env.API2_ORIGIN)), {
       method: "POST", cache: "no-store", redirect: "error", signal: controller.signal,
-      headers: { apikey: process.env.API2_API_KEY!, apisecret: process.env.API2_API_SECRET!, "Content-Type": "application/json" },
+      headers: { apikey: process.env.API2_API_KEY!, apisecret: process.env.API2_API_SECRET!, "Content-Type": "application/json",
+        ...(request.request_id ? { "X-Request-Id": request.request_id } : {}) },
       body: JSON.stringify({ external_user_id: request.external_user_id, name: request.name, advisor_id: request.advisor_id, agency_id:request.agency_id,
         ...(["ganamos_net", "multi_skin"].includes(request.target_provider) ? { creation_mode: "create_only" } : {}) }),
     });
+    const provisionTiming = safeProvisionTiming(response.headers.get("server-timing"));
     if (!response.ok) {
       const failure = await response.json().catch(() => null);
       const retryable = failure?.error?.retryable === true ||
         (failure?.error?.retryable !== false && [408, 429, 500, 502, 503, 504].includes(response.status));
-      throw new TargetIntegrationError("upstream_unavailable", retryable);
+      throw new TargetIntegrationError("upstream_unavailable", retryable, provisionTiming);
     }
     const result: unknown = await response.json();
     if (!result || typeof result !== "object" || Array.isArray(result)) throw new TargetIntegrationError("upstream_unavailable");
@@ -147,7 +149,6 @@ export async function resolveTargetAccount(request: Api2ResolveAccountRequest): 
         !password || password.length > 256 || /[\x00-\x1f\x7f]/.test(password) || created === null || data.platform !== platforms[request.target_provider]) {
       throw new TargetIntegrationError("upstream_unavailable");
     }
-    const provisionTiming = safeProvisionTiming(response.headers.get("server-timing"));
     return { username, password, platform: request.target_provider, created, externalAccountId: request.external_user_id, ...(provisionTiming ? { provisionTiming } : {}) };
   } catch (error) {
     if (error instanceof TargetIntegrationError) throw error;
